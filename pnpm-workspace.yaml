@@ -1,0 +1,11 @@
+packages:
+  - "frontend"
+  - "contracts"
+allowBuilds:
+  '@parcel/watcher': true
+  es5-ext: true
+  esbuild: true
+  hardhat-deploy: true
+  keccak: true
+  sharp: true
+  unrs-resolver: true

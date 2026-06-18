@@ -1,0 +1,29 @@
+{
+  "name": "phase",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Confidential airdrop app for Zama Season 3 TokenOps bounty",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "dev": "pnpm --filter phase-frontend dev",
+    "build": "pnpm --filter phase-frontend build",
+    "typecheck": "pnpm --filter phase-frontend typecheck && pnpm --filter phase-contracts build:ts",
+    "contracts:compile": "pnpm --filter phase-contracts compile",
+    "contracts:test": "pnpm --filter phase-contracts test",
+    "contracts:deploy:sepolia": "pnpm --filter phase-contracts deploy:sepolia",
+    "lint": "pnpm --filter phase-frontend lint"
+  },
+  "keywords": [
+    "zama",
+    "fhevm",
+    "tokenops",
+    "erc-7984",
+    "confidential-airdrop",
+    "privacy"
+  ],
+  "license": "MIT",
+  "packageManager": "pnpm@10.33.0"
+}

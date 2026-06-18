@@ -1,0 +1,550 @@
+{
+  "address": "0x71068d974a217A264C2935dd751D6912f4F96C17",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "campaignId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "CampaignExists",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "campaignId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "CampaignNotFound",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "claimProof",
+          "type": "bytes32"
+        }
+      ],
+      "name": "ClaimProofUsed",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidAddress",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidRecipientCount",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidWindow",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "NotCampaignOperator",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "campaignId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "creator",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "airdrop",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "startTime",
+          "type": "uint64"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "endTime",
+          "type": "uint64"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "recipientCount",
+          "type": "uint32"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "metadataURI",
+          "type": "string"
+        }
+      ],
+      "name": "CampaignRegistered",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "campaignId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "bool",
+          "name": "active",
+          "type": "bool"
+        }
+      ],
+      "name": "CampaignStatusChanged",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "campaignId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "claimProof",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint32",
+          "name": "claimCount",
+          "type": "uint32"
+        }
+      ],
+      "name": "ClaimObserved",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "campaignId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "metadataURI",
+          "type": "string"
+        }
+      ],
+      "name": "MetadataUpdated",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "campaignId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getCampaign",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "creator",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "airdrop",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "token",
+              "type": "address"
+            },
+            {
+              "internalType": "uint64",
+              "name": "startTime",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint64",
+              "name": "endTime",
+              "type": "uint64"
+            },
+            {
+              "internalType": "uint32",
+              "name": "recipientCount",
+              "type": "uint32"
+            },
+            {
+              "internalType": "uint32",
+              "name": "claimCount",
+              "type": "uint32"
+            },
+            {
+              "internalType": "string",
+              "name": "metadataURI",
+              "type": "string"
+            },
+            {
+              "internalType": "bool",
+              "name": "active",
+              "type": "bool"
+            }
+          ],
+          "internalType": "struct PhaseCampaignRegistry.Campaign",
+          "name": "campaign",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "campaignId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "claimProof",
+          "type": "bytes32"
+        }
+      ],
+      "name": "isClaimProofRecorded",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "campaignId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "claimProof",
+          "type": "bytes32"
+        }
+      ],
+      "name": "recordClaim",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "campaignId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "airdrop",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "token",
+          "type": "address"
+        },
+        {
+          "internalType": "uint64",
+          "name": "startTime",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint64",
+          "name": "endTime",
+          "type": "uint64"
+        },
+        {
+          "internalType": "uint32",
+          "name": "recipientCount",
+          "type": "uint32"
+        },
+        {
+          "internalType": "string",
+          "name": "metadataURI",
+          "type": "string"
+        }
+      ],
+      "name": "registerCampaign",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "campaignId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bool",
+          "name": "active",
+          "type": "bool"
+        }
+      ],
+      "name": "setActive",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "campaignId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "string",
+          "name": "metadataURI",
+          "type": "string"
+        }
+      ],
+      "name": "updateMetadata",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xab7f959af17c370f4aad478fff571ff97dc20871a0c187ac49c2b4b201fee98a",
+  "receipt": {
+    "to": null,
+    "from": "0x6f2dF7F1993319064d0C8d0Daa7b847ceA568367",
+    "contractAddress": "0x71068d974a217A264C2935dd751D6912f4F96C17",
+    "transactionIndex": 137,
+    "gasUsed": "864674",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0xe7d52bda561be1081014f04e99157122f9331f58ba7565b2efdb473a6b0ede05",
+    "transactionHash": "0xab7f959af17c370f4aad478fff571ff97dc20871a0c187ac49c2b4b201fee98a",
+    "logs": [],
+    "blockNumber": 11071940,
+    "cumulativeGasUsed": "11764223",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "561a0b0d2e9b0fdb9dcf7b4c521db40b",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.27+commit.40a35a09\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"campaignId\",\"type\":\"bytes32\"}],\"name\":\"CampaignExists\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"campaignId\",\"type\":\"bytes32\"}],\"name\":\"CampaignNotFound\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"claimProof\",\"type\":\"bytes32\"}],\"name\":\"ClaimProofUsed\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidAddress\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidRecipientCount\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidWindow\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotCampaignOperator\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"campaignId\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"creator\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"airdrop\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"startTime\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"endTime\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"uint32\",\"name\":\"recipientCount\",\"type\":\"uint32\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"metadataURI\",\"type\":\"string\"}],\"name\":\"CampaignRegistered\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"campaignId\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"bool\",\"name\":\"active\",\"type\":\"bool\"}],\"name\":\"CampaignStatusChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"campaignId\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"claimProof\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint32\",\"name\":\"claimCount\",\"type\":\"uint32\"}],\"name\":\"ClaimObserved\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"campaignId\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"metadataURI\",\"type\":\"string\"}],\"name\":\"MetadataUpdated\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"campaignId\",\"type\":\"bytes32\"}],\"name\":\"getCampaign\",\"outputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"creator\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"airdrop\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"startTime\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"endTime\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"recipientCount\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"claimCount\",\"type\":\"uint32\"},{\"internalType\":\"string\",\"name\":\"metadataURI\",\"type\":\"string\"},{\"internalType\":\"bool\",\"name\":\"active\",\"type\":\"bool\"}],\"internalType\":\"struct PhaseCampaignRegistry.Campaign\",\"name\":\"campaign\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"campaignId\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"claimProof\",\"type\":\"bytes32\"}],\"name\":\"isClaimProofRecorded\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"campaignId\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"claimProof\",\"type\":\"bytes32\"}],\"name\":\"recordClaim\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"campaignId\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"airdrop\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"token\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"startTime\",\"type\":\"uint64\"},{\"internalType\":\"uint64\",\"name\":\"endTime\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"recipientCount\",\"type\":\"uint32\"},{\"internalType\":\"string\",\"name\":\"metadataURI\",\"type\":\"string\"}],\"name\":\"registerCampaign\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"campaignId\",\"type\":\"bytes32\"},{\"internalType\":\"bool\",\"name\":\"active\",\"type\":\"bool\"}],\"name\":\"setActive\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"campaignId\",\"type\":\"bytes32\"},{\"internalType\":\"string\",\"name\":\"metadataURI\",\"type\":\"string\"}],\"name\":\"updateMetadata\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"This registry deliberately stores no recipient list, plaintext amount, encrypted input,      CSV hash, or total distribution. Confidential allocation state belongs in TokenOps clones.\",\"kind\":\"dev\",\"methods\":{},\"title\":\"PhaseCampaignRegistry\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"notice\":\"Public metadata registry for TokenOps confidential airdrop campaigns.\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/PhaseCampaignRegistry.sol\":\"PhaseCampaignRegistry\"},\"evmVersion\":\"cancun\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"none\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":800},\"remappings\":[]},\"sources\":{\"contracts/PhaseCampaignRegistry.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.27;\\n\\n/// @title PhaseCampaignRegistry\\n/// @notice Public metadata registry for TokenOps confidential airdrop campaigns.\\n/// @dev This registry deliberately stores no recipient list, plaintext amount, encrypted input,\\n///      CSV hash, or total distribution. Confidential allocation state belongs in TokenOps clones.\\ncontract PhaseCampaignRegistry {\\n    struct Campaign {\\n        address creator;\\n        address airdrop;\\n        address token;\\n        uint64 startTime;\\n        uint64 endTime;\\n        uint32 recipientCount;\\n        uint32 claimCount;\\n        string metadataURI;\\n        bool active;\\n    }\\n\\n    error CampaignExists(bytes32 campaignId);\\n    error CampaignNotFound(bytes32 campaignId);\\n    error InvalidAddress();\\n    error InvalidWindow();\\n    error InvalidRecipientCount();\\n    error NotCampaignOperator();\\n    error ClaimProofUsed(bytes32 claimProof);\\n\\n    event CampaignRegistered(\\n        bytes32 indexed campaignId,\\n        address indexed creator,\\n        address indexed airdrop,\\n        address token,\\n        uint64 startTime,\\n        uint64 endTime,\\n        uint32 recipientCount,\\n        string metadataURI\\n    );\\n    event CampaignStatusChanged(bytes32 indexed campaignId, bool active);\\n    event ClaimObserved(bytes32 indexed campaignId, bytes32 indexed claimProof, uint32 claimCount);\\n    event MetadataUpdated(bytes32 indexed campaignId, string metadataURI);\\n\\n    mapping(bytes32 campaignId => Campaign campaign) private _campaigns;\\n    mapping(bytes32 campaignId => mapping(bytes32 claimProof => bool used)) private _claimProofs;\\n\\n    function registerCampaign(\\n        bytes32 campaignId,\\n        address airdrop,\\n        address token,\\n        uint64 startTime,\\n        uint64 endTime,\\n        uint32 recipientCount,\\n        string calldata metadataURI\\n    ) external {\\n        if (_campaigns[campaignId].creator != address(0)) revert CampaignExists(campaignId);\\n        if (airdrop == address(0) || token == address(0)) revert InvalidAddress();\\n        if (endTime <= startTime) revert InvalidWindow();\\n        if (recipientCount == 0) revert InvalidRecipientCount();\\n\\n        _campaigns[campaignId] = Campaign({\\n            creator: msg.sender,\\n            airdrop: airdrop,\\n            token: token,\\n            startTime: startTime,\\n            endTime: endTime,\\n            recipientCount: recipientCount,\\n            claimCount: 0,\\n            metadataURI: metadataURI,\\n            active: true\\n        });\\n\\n        emit CampaignRegistered(\\n            campaignId,\\n            msg.sender,\\n            airdrop,\\n            token,\\n            startTime,\\n            endTime,\\n            recipientCount,\\n            metadataURI\\n        );\\n    }\\n\\n    function setActive(bytes32 campaignId, bool active) external onlyCampaignCreator(campaignId) {\\n        _campaigns[campaignId].active = active;\\n        emit CampaignStatusChanged(campaignId, active);\\n    }\\n\\n    function updateMetadata(bytes32 campaignId, string calldata metadataURI) external onlyCampaignCreator(campaignId) {\\n        _campaigns[campaignId].metadataURI = metadataURI;\\n        emit MetadataUpdated(campaignId, metadataURI);\\n    }\\n\\n    function recordClaim(bytes32 campaignId, bytes32 claimProof) external onlyCampaignOperator(campaignId) {\\n        if (_claimProofs[campaignId][claimProof]) revert ClaimProofUsed(claimProof);\\n        _claimProofs[campaignId][claimProof] = true;\\n        Campaign storage campaign = _campaigns[campaignId];\\n        campaign.claimCount += 1;\\n        emit ClaimObserved(campaignId, claimProof, campaign.claimCount);\\n    }\\n\\n    function getCampaign(bytes32 campaignId) external view returns (Campaign memory campaign) {\\n        campaign = _campaigns[campaignId];\\n        if (campaign.creator == address(0)) revert CampaignNotFound(campaignId);\\n    }\\n\\n    function isClaimProofRecorded(bytes32 campaignId, bytes32 claimProof) external view returns (bool) {\\n        return _claimProofs[campaignId][claimProof];\\n    }\\n\\n    modifier onlyCampaignCreator(bytes32 campaignId) {\\n        Campaign storage campaign = _campaigns[campaignId];\\n        if (campaign.creator == address(0)) revert CampaignNotFound(campaignId);\\n        if (msg.sender != campaign.creator) revert NotCampaignOperator();\\n        _;\\n    }\\n\\n    modifier onlyCampaignOperator(bytes32 campaignId) {\\n        Campaign storage campaign = _campaigns[campaignId];\\n        if (campaign.creator == address(0)) revert CampaignNotFound(campaignId);\\n        if (msg.sender != campaign.creator && msg.sender != campaign.airdrop) revert NotCampaignOperator();\\n        _;\\n    }\\n}\\n\",\"keccak256\":\"0x8da45508e07267e5d4b0bc58e12ff5c1f30d924aa73f58c56af5b2b043b67c28\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x6080604052348015600e575f5ffd5b50610ead8061001c5f395ff3fe608060405234801561000f575f5ffd5b506004361061006f575f3560e01c80639f0370a81161004d5780639f0370a8146100c3578063a375765e146100d6578063cabe0452146100e9575f5ffd5b80634ca1a4f9146100735780636485d67814610088578063870546dc1461009b575b5f5ffd5b610086610081366004610975565b610109565b005b610086610096366004610a19565b610424565b6100ae6100a9366004610a4b565b6104e2565b60405190151581526020015b60405180910390f35b6100866100d1366004610a4b565b610505565b6100866100e4366004610a6b565b610690565b6100fc6100f7366004610ab3565b610752565b6040516100ba9190610af8565b5f888152602081905260409020546001600160a01b0316156101465760405163312ce3e160e01b8152600481018990526024015b60405180910390fd5b6001600160a01b038716158061016357506001600160a01b038616155b156101815760405163e6c4247b60e01b815260040160405180910390fd5b8467ffffffffffffffff168467ffffffffffffffff16116101b55760405163392334ed60e01b815260040160405180910390fd5b8263ffffffff165f036101db576040516306b1243960e11b815260040160405180910390fd5b604051806101200160405280336001600160a01b03168152602001886001600160a01b03168152602001876001600160a01b031681526020018667ffffffffffffffff1681526020018567ffffffffffffffff1681526020018463ffffffff1681526020015f63ffffffff16815260200183838080601f0160208091040260200160405190810160405280939291908181526020018383808284375f9201829052509385525050600160209384018190528c8352828452604092839020855181547fffffffffffffffffffffffff00000000000000000000000000000000000000009081166001600160a01b0392831617835595870151928201805490961692811692909217909455918401516002840180546060870151929094167fffffffff0000000000000000000000000000000000000000000000000000000090941693909317600160a01b67ffffffffffffffff928316021790925550608083015160038301805460a086015160c0870151939094166bffffffffffffffffffffffff19909116176801000000000000000063ffffffff94851602176fffffffff0000000000000000000000001916600160601b939092169290920217905560e082015160048201906103ac9082610c66565b5061010091909101516005909101805460ff19169115159190911790556040516001600160a01b0388169033908a907f1914ec2f6d84c742f05cd10657455a865a9365a19d8c574692a89609d408253a90610412908b908b908b908b908b908b90610d49565b60405180910390a45050505050505050565b5f82815260208190526040902080548391906001600160a01b031661045f5760405163ce1befcb60e01b81526004810183905260240161013d565b80546001600160a01b03163314610489576040516312fb8c8760e01b815260040160405180910390fd5b5f8481526020818152604091829020600501805460ff1916861515908117909155915191825285917f0906ec341dffbdf902806bacd0b2a133908a8756919e8dc065d69b6b6c026964910160405180910390a250505050565b5f82815260016020908152604080832084845290915290205460ff165b92915050565b5f82815260208190526040902080548391906001600160a01b03166105405760405163ce1befcb60e01b81526004810183905260240161013d565b80546001600160a01b03163314801590610567575060018101546001600160a01b03163314155b15610585576040516312fb8c8760e01b815260040160405180910390fd5b5f84815260016020908152604080832086845290915290205460ff16156105c2576040516314eb1bf760e01b81526004810184905260240161013d565b5f8481526001602081815260408084208785528252808420805460ff19168417905587845290839052909120600381018054919291600c90610612908490600160601b900463ffffffff16610da3565b92506101000a81548163ffffffff021916908363ffffffff16021790555083857f41f145dcd692c1b4dccdca339b2b5ca82243b7993a07beeec02a91ec48f9262b83600301600c9054906101000a900463ffffffff16604051610681919063ffffffff91909116815260200190565b60405180910390a35050505050565b5f83815260208190526040902080548491906001600160a01b03166106cb5760405163ce1befcb60e01b81526004810183905260240161013d565b80546001600160a01b031633146106f5576040516312fb8c8760e01b815260040160405180910390fd5b5f858152602081905260409020600401610710848683610dcb565b50847fe36c73fd13989812054eaa73a813bdd65752bda9044a9bdac079e4143c6ab7bd8585604051610743929190610e85565b60405180910390a25050505050565b60408051610120810182525f8082526020820181905291810182905260608082018390526080820183905260a0820183905260c0820183905260e08201526101008101919091525f828152602081815260409182902082516101208101845281546001600160a01b039081168252600183015481169382019390935260028201549283169381019390935267ffffffffffffffff600160a01b909204821660608401526003810154918216608084015263ffffffff680100000000000000008304811660a0850152600160601b90920490911660c083015260048101805460e08401919061083f90610be2565b80601f016020809104026020016040519081016040528092919081815260200182805461086b90610be2565b80156108b65780601f1061088d576101008083540402835291602001916108b6565b820191905f5260205f20905b81548152906001019060200180831161089957829003601f168201915b50505091835250506005919091015460ff16151560209091015280519091506001600160a01b03166108fe5760405163ce1befcb60e01b81526004810183905260240161013d565b919050565b80356001600160a01b03811681146108fe575f5ffd5b803567ffffffffffffffff811681146108fe575f5ffd5b5f5f83601f840112610940575f5ffd5b50813567ffffffffffffffff811115610957575f5ffd5b60208301915083602082850101111561096e575f5ffd5b9250929050565b5f5f5f5f5f5f5f5f60e0898b03121561098c575f5ffd5b8835975061099c60208a01610903565b96506109aa60408a01610903565b95506109b860608a01610919565b94506109c660808a01610919565b935060a089013563ffffffff811681146109de575f5ffd5b925060c089013567ffffffffffffffff8111156109f9575f5ffd5b610a058b828c01610930565b999c989b5096995094979396929594505050565b5f5f60408385031215610a2a575f5ffd5b8235915060208301358015158114610a40575f5ffd5b809150509250929050565b5f5f60408385031215610a5c575f5ffd5b50508035926020909101359150565b5f5f5f60408486031215610a7d575f5ffd5b83359250602084013567ffffffffffffffff811115610a9a575f5ffd5b610aa686828701610930565b9497909650939450505050565b5f60208284031215610ac3575f5ffd5b5035919050565b5f81518084528060208401602086015e5f602082860101526020601f19601f83011685010191505092915050565b60208152610b126020820183516001600160a01b03169052565b5f6020830151610b2d60408401826001600160a01b03169052565b5060408301516001600160a01b038116606084015250606083015167ffffffffffffffff8116608084015250608083015167ffffffffffffffff811660a08401525060a083015163ffffffff811660c08401525060c083015163ffffffff811660e08401525060e0830151610120610100840152610baf610140840182610aca565b9050610100840151610bc661012085018215159052565b509392505050565b634e487b7160e01b5f52604160045260245ffd5b600181811c90821680610bf657607f821691505b602082108103610c1457634e487b7160e01b5f52602260045260245ffd5b50919050565b601f821115610c6157805f5260205f20601f840160051c81016020851015610c3f5750805b601f840160051c820191505b81811015610c5e575f8155600101610c4b565b50505b505050565b815167ffffffffffffffff811115610c8057610c80610bce565b610c9481610c8e8454610be2565b84610c1a565b6020601f821160018114610cc6575f8315610caf5750848201515b5f19600385901b1c1916600184901b178455610c5e565b5f84815260208120601f198516915b82811015610cf55787850151825560209485019460019092019101610cd5565b5084821015610d1257868401515f19600387901b60f8161c191681555b50505050600190811b01905550565b81835281816020850137505f828201602090810191909152601f909101601f19169091010190565b6001600160a01b038716815267ffffffffffffffff8616602082015267ffffffffffffffff8516604082015263ffffffff8416606082015260a060808201525f610d9760a083018486610d21565b98975050505050505050565b63ffffffff81811683821601908111156104ff57634e487b7160e01b5f52601160045260245ffd5b67ffffffffffffffff831115610de357610de3610bce565b610df783610df18354610be2565b83610c1a565b5f601f841160018114610e28575f8515610e115750838201355b5f19600387901b1c1916600186901b178355610c5e565b5f83815260208120601f198716915b82811015610e575786850135825560209485019460019092019101610e37565b5086821015610e73575f1960f88860031b161c19848701351681555b505060018560011b0183555050505050565b602081525f610e98602083018486610d21565b94935050505056fea164736f6c634300081b000a",
+  "deployedBytecode": "0x608060405234801561000f575f5ffd5b506004361061006f575f3560e01c80639f0370a81161004d5780639f0370a8146100c3578063a375765e146100d6578063cabe0452146100e9575f5ffd5b80634ca1a4f9146100735780636485d67814610088578063870546dc1461009b575b5f5ffd5b610086610081366004610975565b610109565b005b610086610096366004610a19565b610424565b6100ae6100a9366004610a4b565b6104e2565b60405190151581526020015b60405180910390f35b6100866100d1366004610a4b565b610505565b6100866100e4366004610a6b565b610690565b6100fc6100f7366004610ab3565b610752565b6040516100ba9190610af8565b5f888152602081905260409020546001600160a01b0316156101465760405163312ce3e160e01b8152600481018990526024015b60405180910390fd5b6001600160a01b038716158061016357506001600160a01b038616155b156101815760405163e6c4247b60e01b815260040160405180910390fd5b8467ffffffffffffffff168467ffffffffffffffff16116101b55760405163392334ed60e01b815260040160405180910390fd5b8263ffffffff165f036101db576040516306b1243960e11b815260040160405180910390fd5b604051806101200160405280336001600160a01b03168152602001886001600160a01b03168152602001876001600160a01b031681526020018667ffffffffffffffff1681526020018567ffffffffffffffff1681526020018463ffffffff1681526020015f63ffffffff16815260200183838080601f0160208091040260200160405190810160405280939291908181526020018383808284375f9201829052509385525050600160209384018190528c8352828452604092839020855181547fffffffffffffffffffffffff00000000000000000000000000000000000000009081166001600160a01b0392831617835595870151928201805490961692811692909217909455918401516002840180546060870151929094167fffffffff0000000000000000000000000000000000000000000000000000000090941693909317600160a01b67ffffffffffffffff928316021790925550608083015160038301805460a086015160c0870151939094166bffffffffffffffffffffffff19909116176801000000000000000063ffffffff94851602176fffffffff0000000000000000000000001916600160601b939092169290920217905560e082015160048201906103ac9082610c66565b5061010091909101516005909101805460ff19169115159190911790556040516001600160a01b0388169033908a907f1914ec2f6d84c742f05cd10657455a865a9365a19d8c574692a89609d408253a90610412908b908b908b908b908b908b90610d49565b60405180910390a45050505050505050565b5f82815260208190526040902080548391906001600160a01b031661045f5760405163ce1befcb60e01b81526004810183905260240161013d565b80546001600160a01b03163314610489576040516312fb8c8760e01b815260040160405180910390fd5b5f8481526020818152604091829020600501805460ff1916861515908117909155915191825285917f0906ec341dffbdf902806bacd0b2a133908a8756919e8dc065d69b6b6c026964910160405180910390a250505050565b5f82815260016020908152604080832084845290915290205460ff165b92915050565b5f82815260208190526040902080548391906001600160a01b03166105405760405163ce1befcb60e01b81526004810183905260240161013d565b80546001600160a01b03163314801590610567575060018101546001600160a01b03163314155b15610585576040516312fb8c8760e01b815260040160405180910390fd5b5f84815260016020908152604080832086845290915290205460ff16156105c2576040516314eb1bf760e01b81526004810184905260240161013d565b5f8481526001602081815260408084208785528252808420805460ff19168417905587845290839052909120600381018054919291600c90610612908490600160601b900463ffffffff16610da3565b92506101000a81548163ffffffff021916908363ffffffff16021790555083857f41f145dcd692c1b4dccdca339b2b5ca82243b7993a07beeec02a91ec48f9262b83600301600c9054906101000a900463ffffffff16604051610681919063ffffffff91909116815260200190565b60405180910390a35050505050565b5f83815260208190526040902080548491906001600160a01b03166106cb5760405163ce1befcb60e01b81526004810183905260240161013d565b80546001600160a01b031633146106f5576040516312fb8c8760e01b815260040160405180910390fd5b5f858152602081905260409020600401610710848683610dcb565b50847fe36c73fd13989812054eaa73a813bdd65752bda9044a9bdac079e4143c6ab7bd8585604051610743929190610e85565b60405180910390a25050505050565b60408051610120810182525f8082526020820181905291810182905260608082018390526080820183905260a0820183905260c0820183905260e08201526101008101919091525f828152602081815260409182902082516101208101845281546001600160a01b039081168252600183015481169382019390935260028201549283169381019390935267ffffffffffffffff600160a01b909204821660608401526003810154918216608084015263ffffffff680100000000000000008304811660a0850152600160601b90920490911660c083015260048101805460e08401919061083f90610be2565b80601f016020809104026020016040519081016040528092919081815260200182805461086b90610be2565b80156108b65780601f1061088d576101008083540402835291602001916108b6565b820191905f5260205f20905b81548152906001019060200180831161089957829003601f168201915b50505091835250506005919091015460ff16151560209091015280519091506001600160a01b03166108fe5760405163ce1befcb60e01b81526004810183905260240161013d565b919050565b80356001600160a01b03811681146108fe575f5ffd5b803567ffffffffffffffff811681146108fe575f5ffd5b5f5f83601f840112610940575f5ffd5b50813567ffffffffffffffff811115610957575f5ffd5b60208301915083602082850101111561096e575f5ffd5b9250929050565b5f5f5f5f5f5f5f5f60e0898b03121561098c575f5ffd5b8835975061099c60208a01610903565b96506109aa60408a01610903565b95506109b860608a01610919565b94506109c660808a01610919565b935060a089013563ffffffff811681146109de575f5ffd5b925060c089013567ffffffffffffffff8111156109f9575f5ffd5b610a058b828c01610930565b999c989b5096995094979396929594505050565b5f5f60408385031215610a2a575f5ffd5b8235915060208301358015158114610a40575f5ffd5b809150509250929050565b5f5f60408385031215610a5c575f5ffd5b50508035926020909101359150565b5f5f5f60408486031215610a7d575f5ffd5b83359250602084013567ffffffffffffffff811115610a9a575f5ffd5b610aa686828701610930565b9497909650939450505050565b5f60208284031215610ac3575f5ffd5b5035919050565b5f81518084528060208401602086015e5f602082860101526020601f19601f83011685010191505092915050565b60208152610b126020820183516001600160a01b03169052565b5f6020830151610b2d60408401826001600160a01b03169052565b5060408301516001600160a01b038116606084015250606083015167ffffffffffffffff8116608084015250608083015167ffffffffffffffff811660a08401525060a083015163ffffffff811660c08401525060c083015163ffffffff811660e08401525060e0830151610120610100840152610baf610140840182610aca565b9050610100840151610bc661012085018215159052565b509392505050565b634e487b7160e01b5f52604160045260245ffd5b600181811c90821680610bf657607f821691505b602082108103610c1457634e487b7160e01b5f52602260045260245ffd5b50919050565b601f821115610c6157805f5260205f20601f840160051c81016020851015610c3f5750805b601f840160051c820191505b81811015610c5e575f8155600101610c4b565b50505b505050565b815167ffffffffffffffff811115610c8057610c80610bce565b610c9481610c8e8454610be2565b84610c1a565b6020601f821160018114610cc6575f8315610caf5750848201515b5f19600385901b1c1916600184901b178455610c5e565b5f84815260208120601f198516915b82811015610cf55787850151825560209485019460019092019101610cd5565b5084821015610d1257868401515f19600387901b60f8161c191681555b50505050600190811b01905550565b81835281816020850137505f828201602090810191909152601f909101601f19169091010190565b6001600160a01b038716815267ffffffffffffffff8616602082015267ffffffffffffffff8516604082015263ffffffff8416606082015260a060808201525f610d9760a083018486610d21565b98975050505050505050565b63ffffffff81811683821601908111156104ff57634e487b7160e01b5f52601160045260245ffd5b67ffffffffffffffff831115610de357610de3610bce565b610df783610df18354610be2565b83610c1a565b5f601f841160018114610e28575f8515610e115750838201355b5f19600387901b1c1916600186901b178355610c5e565b5f83815260208120601f198716915b82811015610e575786850135825560209485019460019092019101610e37565b5086821015610e73575f1960f88860031b161c19848701351681555b505060018560011b0183555050505050565b602081525f610e98602083018486610d21565b94935050505056fea164736f6c634300081b000a",
+  "devdoc": {
+    "details": "This registry deliberately stores no recipient list, plaintext amount, encrypted input,      CSV hash, or total distribution. Confidential allocation state belongs in TokenOps clones.",
+    "kind": "dev",
+    "methods": {},
+    "title": "PhaseCampaignRegistry",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "notice": "Public metadata registry for TokenOps confidential airdrop campaigns.",
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 44414,
+        "contract": "contracts/PhaseCampaignRegistry.sol:PhaseCampaignRegistry",
+        "label": "_campaigns",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_mapping(t_bytes32,t_struct(Campaign)44351_storage)"
+      },
+      {
+        "astId": 44420,
+        "contract": "contracts/PhaseCampaignRegistry.sol:PhaseCampaignRegistry",
+        "label": "_claimProofs",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_mapping(t_bytes32,t_mapping(t_bytes32,t_bool))"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_bool": {
+        "encoding": "inplace",
+        "label": "bool",
+        "numberOfBytes": "1"
+      },
+      "t_bytes32": {
+        "encoding": "inplace",
+        "label": "bytes32",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_bytes32,t_bool)": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => bool)",
+        "numberOfBytes": "32",
+        "value": "t_bool"
+      },
+      "t_mapping(t_bytes32,t_mapping(t_bytes32,t_bool))": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => mapping(bytes32 => bool))",
+        "numberOfBytes": "32",
+        "value": "t_mapping(t_bytes32,t_bool)"
+      },
+      "t_mapping(t_bytes32,t_struct(Campaign)44351_storage)": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => struct PhaseCampaignRegistry.Campaign)",
+        "numberOfBytes": "32",
+        "value": "t_struct(Campaign)44351_storage"
+      },
+      "t_string_storage": {
+        "encoding": "bytes",
+        "label": "string",
+        "numberOfBytes": "32"
+      },
+      "t_struct(Campaign)44351_storage": {
+        "encoding": "inplace",
+        "label": "struct PhaseCampaignRegistry.Campaign",
+        "members": [
+          {
+            "astId": 44334,
+            "contract": "contracts/PhaseCampaignRegistry.sol:PhaseCampaignRegistry",
+            "label": "creator",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_address"
+          },
+          {
+            "astId": 44336,
+            "contract": "contracts/PhaseCampaignRegistry.sol:PhaseCampaignRegistry",
+            "label": "airdrop",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_address"
+          },
+          {
+            "astId": 44338,
+            "contract": "contracts/PhaseCampaignRegistry.sol:PhaseCampaignRegistry",
+            "label": "token",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_address"
+          },
+          {
+            "astId": 44340,
+            "contract": "contracts/PhaseCampaignRegistry.sol:PhaseCampaignRegistry",
+            "label": "startTime",
+            "offset": 20,
+            "slot": "2",
+            "type": "t_uint64"
+          },
+          {
+            "astId": 44342,
+            "contract": "contracts/PhaseCampaignRegistry.sol:PhaseCampaignRegistry",
+            "label": "endTime",
+            "offset": 0,
+            "slot": "3",
+            "type": "t_uint64"
+          },
+          {
+            "astId": 44344,
+            "contract": "contracts/PhaseCampaignRegistry.sol:PhaseCampaignRegistry",
+            "label": "recipientCount",
+            "offset": 8,
+            "slot": "3",
+            "type": "t_uint32"
+          },
+          {
+            "astId": 44346,
+            "contract": "contracts/PhaseCampaignRegistry.sol:PhaseCampaignRegistry",
+            "label": "claimCount",
+            "offset": 12,
+            "slot": "3",
+            "type": "t_uint32"
+          },
+          {
+            "astId": 44348,
+            "contract": "contracts/PhaseCampaignRegistry.sol:PhaseCampaignRegistry",
+            "label": "metadataURI",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_string_storage"
+          },
+          {
+            "astId": 44350,
+            "contract": "contracts/PhaseCampaignRegistry.sol:PhaseCampaignRegistry",
+            "label": "active",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_bool"
+          }
+        ],
+        "numberOfBytes": "192"
+      },
+      "t_uint32": {
+        "encoding": "inplace",
+        "label": "uint32",
+        "numberOfBytes": "4"
+      },
+      "t_uint64": {
+        "encoding": "inplace",
+        "label": "uint64",
+        "numberOfBytes": "8"
+      }
+    }
+  }
+}

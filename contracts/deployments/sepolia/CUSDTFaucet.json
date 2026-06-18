@@ -1,0 +1,314 @@
+{
+  "address": "0xb3b55538F9af7480dd6232A2a141CBF5C0f5fB2A",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "initialOwner",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "tokenAddress",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint48",
+          "name": "nextClaimAt",
+          "type": "uint48"
+        }
+      ],
+      "name": "ClaimTooSoon",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "InvalidToken",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableInvalidOwner",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "OwnableUnauthorizedAccount",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint64",
+          "name": "amount",
+          "type": "uint64"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint48",
+          "name": "nextClaimAt",
+          "type": "uint48"
+        }
+      ],
+      "name": "Claimed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "CLAIM_AMOUNT",
+      "outputs": [
+        {
+          "internalType": "uint64",
+          "name": "",
+          "type": "uint64"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "CLAIM_COOLDOWN",
+      "outputs": [
+        {
+          "internalType": "uint48",
+          "name": "",
+          "type": "uint48"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "claim",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "account",
+          "type": "address"
+        }
+      ],
+      "name": "nextClaimTimes",
+      "outputs": [
+        {
+          "internalType": "uint48",
+          "name": "nextClaimAt",
+          "type": "uint48"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "renounceOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "token",
+      "outputs": [
+        {
+          "internalType": "contract ICUSDTToken",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xcee3e526e3198d3517288c686b18e27da2d54386f341e8be659b9c5c07d069ba",
+  "receipt": {
+    "to": null,
+    "from": "0x6f2dF7F1993319064d0C8d0Daa7b847ceA568367",
+    "contractAddress": "0xb3b55538F9af7480dd6232A2a141CBF5C0f5fB2A",
+    "transactionIndex": 153,
+    "gasUsed": "301413",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000001000000000000000000000000000000000000020000000000000000000800000000100000000000000000000010400000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002000000020000000000000000000000000000000000000000000000000000000000000000400",
+    "blockHash": "0x186e11daddcae0b50ff1fa9afcc84e689a422d3aa58e9a822093025d00aec30d",
+    "transactionHash": "0xcee3e526e3198d3517288c686b18e27da2d54386f341e8be659b9c5c07d069ba",
+    "logs": [
+      {
+        "transactionIndex": 153,
+        "blockNumber": 11071942,
+        "transactionHash": "0xcee3e526e3198d3517288c686b18e27da2d54386f341e8be659b9c5c07d069ba",
+        "address": "0xb3b55538F9af7480dd6232A2a141CBF5C0f5fB2A",
+        "topics": [
+          "0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0",
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0x0000000000000000000000006f2df7f1993319064d0c8d0daa7b847cea568367"
+        ],
+        "data": "0x",
+        "logIndex": 273,
+        "blockHash": "0x186e11daddcae0b50ff1fa9afcc84e689a422d3aa58e9a822093025d00aec30d"
+      }
+    ],
+    "blockNumber": 11071942,
+    "cumulativeGasUsed": "14209567",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0x6f2dF7F1993319064d0C8d0Daa7b847ceA568367",
+    "0xf3aa50C894FdEa725ab1B02CD782b25859Cd0666"
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "561a0b0d2e9b0fdb9dcf7b4c521db40b",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.27+commit.40a35a09\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"initialOwner\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"tokenAddress\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[{\"internalType\":\"uint48\",\"name\":\"nextClaimAt\",\"type\":\"uint48\"}],\"name\":\"ClaimTooSoon\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidToken\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"OwnableInvalidOwner\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"OwnableUnauthorizedAccount\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"amount\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"uint48\",\"name\":\"nextClaimAt\",\"type\":\"uint48\"}],\"name\":\"Claimed\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"CLAIM_AMOUNT\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"CLAIM_COOLDOWN\",\"outputs\":[{\"internalType\":\"uint48\",\"name\":\"\",\"type\":\"uint48\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"claim\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"nextClaimTimes\",\"outputs\":[{\"internalType\":\"uint48\",\"name\":\"nextClaimAt\",\"type\":\"uint48\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"token\",\"outputs\":[{\"internalType\":\"contract ICUSDTToken\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"errors\":{\"OwnableInvalidOwner(address)\":[{\"details\":\"The owner is not a valid owner account. (eg. `address(0)`)\"}],\"OwnableUnauthorizedAccount(address)\":[{\"details\":\"The caller account is not authorized to perform an operation.\"}]},\"kind\":\"dev\",\"methods\":{\"owner()\":{\"details\":\"Returns the address of the current owner.\"},\"renounceOwnership()\":{\"details\":\"Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner.\"},\"transferOwnership(address)\":{\"details\":\"Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner.\"}},\"title\":\"CUSDTFaucet\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"notice\":\"Fixed-rate faucet for the Phase demo token.\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/CUSDCFaucet.sol\":\"CUSDTFaucet\"},\"evmVersion\":\"cancun\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"none\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":800},\"remappings\":[]},\"sources\":{\"@openzeppelin/contracts/access/Ownable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.0.0) (access/Ownable.sol)\\n\\npragma solidity ^0.8.20;\\n\\nimport {Context} from \\\"../utils/Context.sol\\\";\\n\\n/**\\n * @dev Contract module which provides a basic access control mechanism, where\\n * there is an account (an owner) that can be granted exclusive access to\\n * specific functions.\\n *\\n * The initial owner is set to the address provided by the deployer. This can\\n * later be changed with {transferOwnership}.\\n *\\n * This module is used through inheritance. It will make available the modifier\\n * `onlyOwner`, which can be applied to your functions to restrict their use to\\n * the owner.\\n */\\nabstract contract Ownable is Context {\\n    address private _owner;\\n\\n    /**\\n     * @dev The caller account is not authorized to perform an operation.\\n     */\\n    error OwnableUnauthorizedAccount(address account);\\n\\n    /**\\n     * @dev The owner is not a valid owner account. (eg. `address(0)`)\\n     */\\n    error OwnableInvalidOwner(address owner);\\n\\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\\n\\n    /**\\n     * @dev Initializes the contract setting the address provided by the deployer as the initial owner.\\n     */\\n    constructor(address initialOwner) {\\n        if (initialOwner == address(0)) {\\n            revert OwnableInvalidOwner(address(0));\\n        }\\n        _transferOwnership(initialOwner);\\n    }\\n\\n    /**\\n     * @dev Throws if called by any account other than the owner.\\n     */\\n    modifier onlyOwner() {\\n        _checkOwner();\\n        _;\\n    }\\n\\n    /**\\n     * @dev Returns the address of the current owner.\\n     */\\n    function owner() public view virtual returns (address) {\\n        return _owner;\\n    }\\n\\n    /**\\n     * @dev Throws if the sender is not the owner.\\n     */\\n    function _checkOwner() internal view virtual {\\n        if (owner() != _msgSender()) {\\n            revert OwnableUnauthorizedAccount(_msgSender());\\n        }\\n    }\\n\\n    /**\\n     * @dev Leaves the contract without owner. It will not be possible to call\\n     * `onlyOwner` functions. Can only be called by the current owner.\\n     *\\n     * NOTE: Renouncing ownership will leave the contract without an owner,\\n     * thereby disabling any functionality that is only available to the owner.\\n     */\\n    function renounceOwnership() public virtual onlyOwner {\\n        _transferOwnership(address(0));\\n    }\\n\\n    /**\\n     * @dev Transfers ownership of the contract to a new account (`newOwner`).\\n     * Can only be called by the current owner.\\n     */\\n    function transferOwnership(address newOwner) public virtual onlyOwner {\\n        if (newOwner == address(0)) {\\n            revert OwnableInvalidOwner(address(0));\\n        }\\n        _transferOwnership(newOwner);\\n    }\\n\\n    /**\\n     * @dev Transfers ownership of the contract to a new account (`newOwner`).\\n     * Internal function without access restriction.\\n     */\\n    function _transferOwnership(address newOwner) internal virtual {\\n        address oldOwner = _owner;\\n        _owner = newOwner;\\n        emit OwnershipTransferred(oldOwner, newOwner);\\n    }\\n}\\n\",\"keccak256\":\"0xff6d0bb2e285473e5311d9d3caacb525ae3538a80758c10649a4d61029b017bb\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/Context.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v5.0.1) (utils/Context.sol)\\n\\npragma solidity ^0.8.20;\\n\\n/**\\n * @dev Provides information about the current execution context, including the\\n * sender of the transaction and its data. While these are generally available\\n * via msg.sender and msg.data, they should not be accessed in such a direct\\n * manner, since when dealing with meta-transactions the account sending and\\n * paying for execution may not be the actual sender (as far as an application\\n * is concerned).\\n *\\n * This contract is only required for intermediate, library-like contracts.\\n */\\nabstract contract Context {\\n    function _msgSender() internal view virtual returns (address) {\\n        return msg.sender;\\n    }\\n\\n    function _msgData() internal view virtual returns (bytes calldata) {\\n        return msg.data;\\n    }\\n\\n    function _contextSuffixLength() internal view virtual returns (uint256) {\\n        return 0;\\n    }\\n}\\n\",\"keccak256\":\"0x493033a8d1b176a037b2cc6a04dad01a5c157722049bbecf632ca876224dd4b2\",\"license\":\"MIT\"},\"contracts/CUSDCFaucet.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity ^0.8.27;\\n\\nimport {Ownable} from \\\"@openzeppelin/contracts/access/Ownable.sol\\\";\\n\\ninterface ICUSDTToken {\\n    function faucetMint(address to, uint64 amount) external;\\n}\\n\\n/// @title CUSDTFaucet\\n/// @notice Fixed-rate faucet for the Phase demo token.\\ncontract CUSDTFaucet is Ownable {\\n    error InvalidToken();\\n    error ClaimTooSoon(uint48 nextClaimAt);\\n\\n    event Claimed(address indexed account, uint64 amount, uint48 nextClaimAt);\\n\\n    uint64 public constant CLAIM_AMOUNT = 1_000_000 * 1_000_000;\\n    uint48 public constant CLAIM_COOLDOWN = 1 days;\\n\\n    ICUSDTToken public immutable token;\\n    mapping(address account => uint48 nextClaimAt) public nextClaimTimes;\\n\\n    constructor(address initialOwner, address tokenAddress) Ownable(initialOwner) {\\n        if (tokenAddress == address(0)) revert InvalidToken();\\n        token = ICUSDTToken(tokenAddress);\\n    }\\n\\n    function claim() external {\\n        uint48 nextClaimAt = nextClaimTimes[msg.sender];\\n        if (block.timestamp < nextClaimAt) revert ClaimTooSoon(nextClaimAt);\\n\\n        uint48 refreshedClaimAt = uint48(block.timestamp + CLAIM_COOLDOWN);\\n        nextClaimTimes[msg.sender] = refreshedClaimAt;\\n\\n        token.faucetMint(msg.sender, CLAIM_AMOUNT);\\n        emit Claimed(msg.sender, CLAIM_AMOUNT, refreshedClaimAt);\\n    }\\n}\\n\",\"keccak256\":\"0xcf551ea5b9d81cd0433fddb4152a66f0cac9462b14c0c80a9d059a8d34055b5b\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x60a060405234801561000f575f5ffd5b5060405161054f38038061054f83398101604081905261002e91610109565b816001600160a01b03811661005c57604051631e4fbdf760e01b81525f600482015260240160405180910390fd5b6100658161009f565b506001600160a01b03811661008d5760405163c1ab6dc160e01b815260040160405180910390fd5b6001600160a01b03166080525061013a565b5f80546001600160a01b038381166001600160a01b0319831681178455604051919092169283917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e09190a35050565b80516001600160a01b0381168114610104575f5ffd5b919050565b5f5f6040838503121561011a575f5ffd5b610123836100ee565b9150610131602084016100ee565b90509250929050565b6080516103f66101595f395f8181610149015261021201526103f65ff3fe608060405234801561000f575f5ffd5b5060043610610085575f3560e01c806386a301941161005857806386a30194146100e65780638da5cb5b1461010d578063f2fde38b14610131578063fc0c546a14610144575f5ffd5b8063270ef3851461008957806337c909ec146100b35780634e71d92d146100d4578063715018a6146100de575b5f5ffd5b61009564e8d4a5100081565b60405167ffffffffffffffff90911681526020015b60405180910390f35b6100bd6201518081565b60405165ffffffffffff90911681526020016100aa565b6100dc61016b565b005b6100dc6102b4565b6100bd6100f4366004610397565b60016020525f908152604090205465ffffffffffff1681565b5f546001600160a01b03165b6040516001600160a01b0390911681526020016100aa565b6100dc61013f366004610397565b6102c7565b6101197f000000000000000000000000000000000000000000000000000000000000000081565b335f9081526001602052604090205465ffffffffffff16428111156101b257604051635f91037360e01b815265ffffffffffff821660048201526024015b60405180910390fd5b5f6101c062015180426103c4565b335f8181526001602052604090819020805465ffffffffffff191665ffffffffffff851617905551634973582f60e01b8152600481019190915264e8d4a5100060248201529091506001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001690634973582f906044015f604051808303815f87803b158015610253575f5ffd5b505af1158015610265573d5f5f3e3d5ffd5b50506040805164e8d4a51000815265ffffffffffff851660208201523393507f9c06bb9559c9015bc2f09a0f6d4759041e3fdb04f7f78f880aaeef41048323bc92500160405180910390a25050565b6102bc610304565b6102c55f610330565b565b6102cf610304565b6001600160a01b0381166102f857604051631e4fbdf760e01b81525f60048201526024016101a9565b61030181610330565b50565b5f546001600160a01b031633146102c55760405163118cdaa760e01b81523360048201526024016101a9565b5f80546001600160a01b038381167fffffffffffffffffffffffff0000000000000000000000000000000000000000831681178455604051919092169283917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e09190a35050565b5f602082840312156103a7575f5ffd5b81356001600160a01b03811681146103bd575f5ffd5b9392505050565b808201808211156103e357634e487b7160e01b5f52601160045260245ffd5b9291505056fea164736f6c634300081b000a",
+  "deployedBytecode": "0x608060405234801561000f575f5ffd5b5060043610610085575f3560e01c806386a301941161005857806386a30194146100e65780638da5cb5b1461010d578063f2fde38b14610131578063fc0c546a14610144575f5ffd5b8063270ef3851461008957806337c909ec146100b35780634e71d92d146100d4578063715018a6146100de575b5f5ffd5b61009564e8d4a5100081565b60405167ffffffffffffffff90911681526020015b60405180910390f35b6100bd6201518081565b60405165ffffffffffff90911681526020016100aa565b6100dc61016b565b005b6100dc6102b4565b6100bd6100f4366004610397565b60016020525f908152604090205465ffffffffffff1681565b5f546001600160a01b03165b6040516001600160a01b0390911681526020016100aa565b6100dc61013f366004610397565b6102c7565b6101197f000000000000000000000000000000000000000000000000000000000000000081565b335f9081526001602052604090205465ffffffffffff16428111156101b257604051635f91037360e01b815265ffffffffffff821660048201526024015b60405180910390fd5b5f6101c062015180426103c4565b335f8181526001602052604090819020805465ffffffffffff191665ffffffffffff851617905551634973582f60e01b8152600481019190915264e8d4a5100060248201529091506001600160a01b037f00000000000000000000000000000000000000000000000000000000000000001690634973582f906044015f604051808303815f87803b158015610253575f5ffd5b505af1158015610265573d5f5f3e3d5ffd5b50506040805164e8d4a51000815265ffffffffffff851660208201523393507f9c06bb9559c9015bc2f09a0f6d4759041e3fdb04f7f78f880aaeef41048323bc92500160405180910390a25050565b6102bc610304565b6102c55f610330565b565b6102cf610304565b6001600160a01b0381166102f857604051631e4fbdf760e01b81525f60048201526024016101a9565b61030181610330565b50565b5f546001600160a01b031633146102c55760405163118cdaa760e01b81523360048201526024016101a9565b5f80546001600160a01b038381167fffffffffffffffffffffffff0000000000000000000000000000000000000000831681178455604051919092169283917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e09190a35050565b5f602082840312156103a7575f5ffd5b81356001600160a01b03811681146103bd575f5ffd5b9392505050565b808201808211156103e357634e487b7160e01b5f52601160045260245ffd5b9291505056fea164736f6c634300081b000a",
+  "devdoc": {
+    "errors": {
+      "OwnableInvalidOwner(address)": [
+        {
+          "details": "The owner is not a valid owner account. (eg. `address(0)`)"
+        }
+      ],
+      "OwnableUnauthorizedAccount(address)": [
+        {
+          "details": "The caller account is not authorized to perform an operation."
+        }
+      ]
+    },
+    "kind": "dev",
+    "methods": {
+      "owner()": {
+        "details": "Returns the address of the current owner."
+      },
+      "renounceOwnership()": {
+        "details": "Leaves the contract without owner. It will not be possible to call `onlyOwner` functions. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby disabling any functionality that is only available to the owner."
+      },
+      "transferOwnership(address)": {
+        "details": "Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner."
+      }
+    },
+    "title": "CUSDTFaucet",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "notice": "Fixed-rate faucet for the Phase demo token.",
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 43858,
+        "contract": "contracts/CUSDCFaucet.sol:CUSDTFaucet",
+        "label": "_owner",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_address"
+      },
+      {
+        "astId": 44111,
+        "contract": "contracts/CUSDCFaucet.sol:CUSDTFaucet",
+        "label": "nextClaimTimes",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_mapping(t_address,t_uint48)"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_mapping(t_address,t_uint48)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => uint48)",
+        "numberOfBytes": "32",
+        "value": "t_uint48"
+      },
+      "t_uint48": {
+        "encoding": "inplace",
+        "label": "uint48",
+        "numberOfBytes": "6"
+      }
+    }
+  }
+}
