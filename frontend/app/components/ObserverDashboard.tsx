@@ -6,13 +6,25 @@ import { ArrowRight, Eye, Search, ShieldCheck } from "lucide-react";
 import { maskAddress } from "@/lib/format";
 import type { Campaign } from "@/lib/types";
 
+type ObserverFilter = "all" | "live" | "proofs" | "batch";
+
+const filterOptions: Array<{ id: ObserverFilter; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "live", label: "Live" },
+  { id: "proofs", label: "Proofs" },
+  { id: "batch", label: "Batch" },
+];
+
 export default function ObserverDashboard({ campaigns }: { campaigns: Campaign[] }) {
   const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<ObserverFilter>("all");
 
   const filteredCampaigns = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return campaigns;
     return campaigns.filter((campaign) => {
+      if (!campaignMatchesFilter(campaign, filter)) return false;
+      if (!needle) return true;
+
       const proofFields = campaign.previews.flatMap((preview) => [preview.maskedAddress, preview.proofHash, preview.status]);
       return [
         campaign.name,
@@ -24,34 +36,50 @@ export default function ObserverDashboard({ campaigns }: { campaigns: Campaign[]
         ...proofFields,
       ].some((value) => value.toLowerCase().includes(needle));
     });
-  }, [campaigns, query]);
+  }, [campaigns, filter, query]);
+
+  const filterCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        filterOptions.map((option) => [option.id, campaigns.filter((campaign) => campaignMatchesFilter(campaign, option.id)).length]),
+      ) as Record<ObserverFilter, number>,
+    [campaigns],
+  );
 
   const liveCampaigns = campaigns.filter((campaign) => campaign.status === "live").length;
   const claimProofs = campaigns.reduce((total, campaign) => total + campaign.claimsCount, 0);
-  const recipientCount = campaigns.reduce((total, campaign) => total + campaign.recipientCount, 0);
 
   return (
     <section className="observer-page" aria-labelledby="observer-title">
-      <div className="observer-hero">
+      <div className="observer-hero observer-hero-clean">
         <div>
           <span className="product-kicker">
             <Eye size={16} aria-hidden="true" />
             Observer
           </span>
-          <h1 id="observer-title">Track airdrop activity.</h1>
-          <p>Status, claims, proofs. Allocations sealed.</p>
+          <h1 id="observer-title">Track airdrops.</h1>
+          <p>Status and proofs, with allocations sealed.</p>
         </div>
-        <aside className="observer-proof-panel" aria-label="Observer proof summary">
-          <span className={claimProofs > 0 ? "pill pill-live" : "pill pill-sealed"}>{claimProofs > 0 ? "proofs live" : "proofs pending"}</span>
-          <strong>{claimProofs.toLocaleString()} public claim proofs</strong>
-          <small>{recipientCount.toLocaleString()} masked recipients</small>
-        </aside>
       </div>
 
       <div className="observer-toolbar panel">
-        <div className="observer-search">
+        <label className="observer-search">
           <Search size={17} aria-hidden="true" />
-          <input className="input" placeholder="Search campaigns or proof hashes" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input className="input" placeholder="Search campaigns" value={query} onChange={(event) => setQuery(event.target.value)} />
+        </label>
+        <div className="observer-filterbar" aria-label="Campaign filters">
+          {filterOptions.map((option) => (
+            <button
+              className={filter === option.id ? "is-active" : ""}
+              type="button"
+              aria-pressed={filter === option.id}
+              onClick={() => setFilter(option.id)}
+              key={option.id}
+            >
+              <span>{option.label}</span>
+              <strong>{filterCounts[option.id].toLocaleString()}</strong>
+            </button>
+          ))}
         </div>
         <div className="observer-toolbar-stats" aria-label="Observer campaign stats">
           <ObserverStat label="Campaigns" value={campaigns.length.toLocaleString()} />
@@ -60,7 +88,12 @@ export default function ObserverDashboard({ campaigns }: { campaigns: Campaign[]
         </div>
       </div>
 
-      {campaigns.length === 0 ? null : filteredCampaigns.length === 0 ? (
+      {campaigns.length === 0 ? (
+        <section className="observer-empty panel">
+          <Eye size={22} aria-hidden="true" />
+          <h2>No campaigns.</h2>
+        </section>
+      ) : filteredCampaigns.length === 0 ? (
         <section className="observer-empty panel">
           <Search size={22} aria-hidden="true" />
           <h2>No matching campaigns.</h2>
@@ -77,48 +110,52 @@ export default function ObserverDashboard({ campaigns }: { campaigns: Campaign[]
 }
 
 function ObserverCampaignCard({ campaign }: { campaign: Campaign }) {
+  const isBatch = campaign.kind === "batch";
   const latestProof = campaign.previews[0]?.proofHash;
-  const maskedRecipient = campaign.previews[0]?.maskedAddress ?? "none";
+  const maskedRecipient = campaign.previews[0]?.maskedAddress ?? (isBatch ? "rows sealed" : "none");
+  const progress = isBatch ? 100 : progressPercent(campaign.claimsCount, campaign.recipientCount);
+  const proofLabel = latestProof ? maskAddress(latestProof, 10, 6) : isBatch ? "sealed" : "none";
+  const campaignKind = campaign.kind ?? "claim";
 
   return (
-    <article className="observer-campaign-card">
+    <Link className="observer-campaign-card" href={`/observer/${campaign.id}`} aria-label={`Open observer for ${campaign.name}`}>
       <div className="observer-campaign-top">
-        <span className={statusPillClass(campaign.status)}>{campaign.status}</span>
-        <span className={latestProof ? "observer-state-pill is-ready" : "observer-state-pill"}>
+        <span className={statusPillClass(campaign)}>{observerStatusLabel(campaign)}</span>
+        <span className={latestProof || isBatch ? "observer-state-pill is-ready" : "observer-state-pill"}>
           <ShieldCheck size={13} aria-hidden="true" />
-          {latestProof ? "Proof activity" : "No proofs"}
+          {campaignKind}
         </span>
       </div>
 
-      <div>
-        <h2>{campaign.name}</h2>
-        <p>{formatCampaignTiming(campaign)}</p>
-      </div>
-
-      <div className="observer-campaign-facts">
-        <ObserverFact label="Token" value={maskAddress(campaign.tokenAddress)} />
-        <ObserverFact label="Campaign" value={campaign.airdropAddress ? maskAddress(campaign.airdropAddress) : "pending"} />
-        <ObserverFact label="Recipients" value={campaign.recipientCount.toLocaleString()} />
-        <ObserverFact label="Claims" value={campaign.claimsCount.toLocaleString()} />
-      </div>
-
-      <div className="observer-proof-strip">
+      <div className="observer-campaign-main">
         <div>
-          <span>Latest proof</span>
-          <strong className="mono">{latestProof ? maskAddress(latestProof, 12, 10) : "no proofs yet"}</strong>
+          <h2>{campaign.name}</h2>
+          <span>{formatCampaignTiming(campaign)}</span>
         </div>
-        <div>
-          <span>Masked recipient</span>
-          <strong className="mono">{maskedRecipient}</strong>
-        </div>
+        <span className="observer-card-arrow" aria-hidden="true">
+          <ArrowRight size={17} />
+        </span>
       </div>
 
-      <div className="observer-campaign-action">
-        <Link className="button-secondary" href={`/observer/${campaign.id}`}>
-          Open observer <ArrowRight size={15} aria-hidden="true" />
-        </Link>
+      <div className="observer-campaign-metrics" aria-label={`${campaign.name} summary`}>
+        <ObserverMetric label="Recipients" value={campaign.recipientCount.toLocaleString()} />
+        <ObserverMetric label={isBatch ? "Mode" : "Claims"} value={isBatch ? "Direct" : campaign.claimsCount.toLocaleString()} />
+        <ObserverMetric label="Token" value={maskAddress(campaign.tokenAddress)} />
       </div>
-    </article>
+
+      <div className="observer-campaign-signal">
+        <div className="observer-progress-track" aria-hidden="true">
+          <span style={{ width: `${progress}%` }} />
+        </div>
+        <span>{isBatch ? observerStatusLabel(campaign) : `${progress}% claimed`}</span>
+      </div>
+
+      <div className="observer-proof-preview">
+        <ShieldCheck size={15} aria-hidden="true" />
+        <strong className="mono">{proofLabel}</strong>
+        <span className="mono">{maskedRecipient}</span>
+      </div>
+    </Link>
   );
 }
 
@@ -131,24 +168,36 @@ function ObserverStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ObserverFact({ label, value }: { label: string; value: string }) {
+function ObserverMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="observer-fact">
+    <div className="observer-campaign-metric">
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
   );
 }
 
-function statusPillClass(status: Campaign["status"]): string {
-  if (status === "live") return "pill pill-live";
-  if (status === "deploying") return "pill pill-watch";
+function statusPillClass(campaign: Campaign): string {
+  if (campaign.kind === "batch") {
+    if (campaign.status === "ended" || campaign.status === "live") return "pill pill-live";
+    return "pill pill-watch";
+  }
+  if (campaign.status === "live") return "pill pill-live";
+  if (campaign.status === "deploying") return "pill pill-watch";
   return "pill pill-sealed";
 }
 
+function observerStatusLabel(campaign: Campaign): string {
+  if (campaign.kind !== "batch") return campaign.status;
+  if (campaign.status === "ended") return "dispersed";
+  if (campaign.status === "deploying") return "preparing";
+  if (campaign.status === "live") return "active";
+  return "setup";
+}
+
 function formatCampaignTiming(campaign: Campaign): string {
-  if (campaign.kind === "batch") return "On-demand disperse";
-  if (campaign.kind === "vesting") return "Vesting schedule";
+  if (campaign.kind === "batch") return "Batch";
+  if (campaign.kind === "vesting") return "Vesting";
   return formatWindow(campaign.startTimestamp, campaign.endTimestamp);
 }
 
@@ -158,4 +207,16 @@ function formatWindow(startTimestamp: number, endTimestamp: number): string {
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp * 1000).toISOString().slice(0, 10);
+}
+
+function campaignMatchesFilter(campaign: Campaign, filter: ObserverFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "live") return campaign.status === "live";
+  if (filter === "proofs") return campaign.claimsCount > 0 || campaign.previews.length > 0;
+  return campaign.kind === "batch";
+}
+
+function progressPercent(claims: number, recipients: number): number {
+  if (recipients === 0) return 0;
+  return Math.min(100, Math.round((claims / recipients) * 100));
 }

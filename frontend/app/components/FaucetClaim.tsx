@@ -80,7 +80,6 @@ export default function FaucetClaim() {
   const [loading, setLoading] = useState(true);
   const [claiming, setClaiming] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [status, setStatus] = useState("Connect a wallet to claim Sepolia cUSDC.");
   const [latestHash, setLatestHash] = useState<Hex | null>(null);
   const [copied, setCopied] = useState<CopyTarget | null>(null);
   const [nowSeconds, setNowSeconds] = useState(0);
@@ -106,7 +105,6 @@ export default function FaucetClaim() {
       .then((nextState) => {
         if (!active) return;
         setFaucetState(nextState);
-        setStatus(address ? "Faucet state synced for your wallet." : "Connect a wallet to check your claim window.");
       })
       .catch((cause) => {
         if (!active) return;
@@ -127,14 +125,6 @@ export default function FaucetClaim() {
   const isCoolingDown = Boolean(isConnected && nextClaimAt > 0 && secondsUntilClaim > 0);
   const claimAmountLabel = faucetState ? `${formatTokenUnits(faucetState.claimAmount)} cUSDC` : "Syncing";
   const cooldownLabel = faucetState ? formatDuration(Number(faucetState.cooldown)) : "Syncing";
-  const claimWindowLabel = !isConnected
-    ? "Connect wallet"
-    : wrongNetwork
-      ? "Switch to Sepolia"
-      : isCoolingDown
-        ? `Ready in ${formatDuration(secondsUntilClaim)}`
-        : "Ready now";
-  const statusClass = loadError || wrongNetwork ? "is-error" : !isConnected || isCoolingDown || loading ? "is-waiting" : "is-good";
   const canClaim = Boolean(isConnected && address && !wrongNetwork && !isCoolingDown && !claiming && !loading && publicClient && walletClient.data);
 
   async function refreshFaucetState() {
@@ -149,7 +139,6 @@ export default function FaucetClaim() {
     try {
       const nextState = await readFaucetState(publicClient, address);
       setFaucetState(nextState);
-      setStatus(address ? "Faucet state refreshed." : "Connect a wallet to check your claim window.");
     } catch (cause) {
       setLoadError(errorMessage(cause));
     } finally {
@@ -185,7 +174,6 @@ export default function FaucetClaim() {
 
     try {
       setClaiming(true);
-      setStatus("Confirm the faucet claim in your wallet.");
       const hash = await walletClient.data.writeContract({
         account: address,
         address: cusdcFaucetAddress,
@@ -193,14 +181,11 @@ export default function FaucetClaim() {
         functionName: "claim",
       });
       setLatestHash(hash);
-      setStatus("Waiting for Sepolia confirmation.");
       await publicClient.waitForTransactionReceipt({ hash });
       const nextState = await readFaucetState(publicClient, address);
       setFaucetState(nextState);
-      setStatus("Claim confirmed. cUSDC was minted to your wallet.");
     } catch (cause) {
       setLoadError(errorMessage(cause));
-      setStatus("Claim did not complete.");
     } finally {
       setClaiming(false);
     }
@@ -208,7 +193,7 @@ export default function FaucetClaim() {
 
   return (
     <section className="faucet-page">
-      <div className="faucet-hero">
+      <div className="faucet-hero faucet-hero-clean">
         <div>
           <span className="product-kicker">Sepolia cUSDC faucet</span>
           <h1>Claim demo cUSDC for private airdrop ops.</h1>
@@ -226,12 +211,6 @@ export default function FaucetClaim() {
             </button>
           </div>
         </div>
-
-        <div className={`faucet-status-card ${statusClass}`} aria-live="polite">
-          <span>{loadError ? "Needs attention" : loading ? "Syncing" : isCoolingDown ? "Cooldown" : isConnected ? "Claim window" : "Wallet"}</span>
-          <strong>{loadError ? "Action blocked" : claimWindowLabel}</strong>
-          <small>{loadError ?? status}</small>
-        </div>
       </div>
 
       <div className="faucet-grid">
@@ -243,7 +222,7 @@ export default function FaucetClaim() {
             <div>
               <span className="section-label">Claim</span>
               <h2 id="faucet-claim-title">Mint cUSDC to your wallet</h2>
-              <p>Each wallet can claim once per cooldown window. The minted balance remains confidential on-chain.</p>
+              <p>One claim per cooldown window. Balance stays confidential.</p>
             </div>
           </div>
 

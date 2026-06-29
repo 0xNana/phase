@@ -5,8 +5,10 @@ import { maskAddress } from "@/lib/format";
 import type { Campaign, PublicRecipientPreview } from "@/lib/types";
 
 export default function ObserverView({ campaign }: { campaign: Campaign }) {
+  const isBatch = campaign.kind === "batch";
   const progress = progressPercent(campaign.claimsCount, campaign.recipientCount);
   const proofRows = campaign.previews.slice(0, 12);
+  const statusLabel = observerStatusLabel(campaign);
 
   return (
     <section className="observer-detail panel overflow-hidden">
@@ -14,27 +16,27 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
         <div>
           <span className="pill pill-watch">Observer</span>
           <h1>{campaign.name}</h1>
-          <p>Public claim activity only. Recipients and allocations stay sealed.</p>
+          <p>{isBatch ? "Distribution status. Recipients and amounts stay sealed." : "Public claim activity only. Recipients and allocations stay sealed."}</p>
         </div>
         <div className="observer-detail-status" aria-label="Observer status">
-          <span className={campaign.status === "live" ? "pill pill-live" : "pill pill-sealed"}>{campaign.status}</span>
-          <strong>{progress}% claimed</strong>
-          <small>{campaign.claimsCount.toLocaleString()} proofs of {campaign.recipientCount.toLocaleString()} recipients</small>
+          <span className={observerStatusPillClass(campaign)}>{statusLabel}</span>
+          <strong>{isBatch ? statusLabel : `${progress}% claimed`}</strong>
+          <small>{isBatch ? "Recipient rows sealed" : `${campaign.claimsCount.toLocaleString()} proofs of ${campaign.recipientCount.toLocaleString()} recipients`}</small>
         </div>
       </div>
 
       <div className="observer-detail-stats" aria-label="Observer campaign facts">
         <DetailStat icon={<Users size={18} aria-hidden="true" />} label="Recipients" value={campaign.recipientCount.toLocaleString()} />
-        <DetailStat icon={<FileCheck2 size={18} aria-hidden="true" />} label="Claim proofs" value={campaign.claimsCount.toLocaleString()} />
-        <DetailStat icon={<ShieldCheck size={18} aria-hidden="true" />} label="Airdrop" value={campaign.airdropAddress ? maskAddress(campaign.airdropAddress) : "Not created"} />
+        <DetailStat icon={<FileCheck2 size={18} aria-hidden="true" />} label={isBatch ? "Distribution" : "Claim proofs"} value={isBatch ? "Direct" : campaign.claimsCount.toLocaleString()} />
+        <DetailStat icon={<ShieldCheck size={18} aria-hidden="true" />} label={isBatch ? "Campaign" : "Airdrop"} value={campaign.airdropAddress ? maskAddress(campaign.airdropAddress) : isBatch ? "Batch disperse" : "Not created"} />
         <DetailStat icon={<LockKeyhole size={18} aria-hidden="true" />} label="Token" value={maskAddress(campaign.tokenAddress)} />
       </div>
 
       <section className="observer-detail-table">
         <div className="observer-detail-table-header">
           <div>
-            <h2>Claim proofs</h2>
-            <p>Masked recipients and proof hashes only.</p>
+            <h2>{isBatch ? "Distribution" : "Claim proofs"}</h2>
+            <p>{isBatch ? "Recipient-level rows stay sealed." : "Masked recipients and proof hashes only."}</p>
           </div>
           <div className="observer-detail-boundary">
             <EyeOff size={16} aria-hidden="true" />
@@ -45,11 +47,11 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
           <table className="w-full min-w-[720px] border-collapse text-sm">
             <thead className="border-b border-[var(--line)] bg-[var(--surface-soft)] text-left text-xs font-bold uppercase text-[var(--muted)]">
               <tr>
-                <th className="px-5 py-3">Event</th>
-                <th className="px-5 py-3">Masked recipient</th>
-                <th className="px-5 py-3">Proof hash</th>
+                <th className="px-5 py-3">{isBatch ? "Batch" : "Event"}</th>
+                <th className="px-5 py-3">{isBatch ? "Recipient" : "Masked recipient"}</th>
+                <th className="px-5 py-3">{isBatch ? "Reference" : "Proof hash"}</th>
                 <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">Verification</th>
+                <th className="px-5 py-3 text-right">{isBatch ? "Check" : "Verification"}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--line)]">
@@ -58,7 +60,7 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
               ) : (
                 <tr>
                   <td className="px-5 py-6 text-[var(--muted)]" colSpan={5}>
-                    No public claim proofs have been recorded yet.
+                    {isBatch ? "Recipient distribution is sealed." : "No public claim proofs have been recorded yet."}
                   </td>
                 </tr>
               )}
@@ -68,6 +70,22 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
       </section>
     </section>
   );
+}
+
+function observerStatusLabel(campaign: Campaign): string {
+  if (campaign.kind !== "batch") return campaign.status;
+  if (campaign.status === "ended") return "dispersed";
+  if (campaign.status === "deploying") return "preparing";
+  if (campaign.status === "live") return "active disperse";
+  return "disperse setup";
+}
+
+function observerStatusPillClass(campaign: Campaign): string {
+  if (campaign.kind === "batch") {
+    if (campaign.status === "ended" || campaign.status === "live") return "pill pill-live";
+    return "pill pill-watch";
+  }
+  return campaign.status === "live" ? "pill pill-live" : "pill pill-sealed";
 }
 
 function DetailStat({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {

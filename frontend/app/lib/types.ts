@@ -43,6 +43,16 @@ export interface ClaimPayload {
   claimedAt?: string;
 }
 
+export interface VestingScheduleRecord {
+  campaignId: string;
+  recipient: Address;
+  vestingId: Hex;
+  managerAddress?: Address;
+  batchIndex?: number;
+  txHash?: Hex;
+  createdAt: string;
+}
+
 export interface CampaignInput {
   name: string;
   kind: CampaignKind;
@@ -62,7 +72,16 @@ export interface IssueClaimInput {
   signature: Hex;
 }
 
+export interface SaveVestingScheduleInput {
+  recipient: Address;
+  vestingId: Hex;
+  managerAddress?: Address;
+  batchIndex?: number;
+  txHash?: Hex;
+}
+
 export interface PhaseDb {
   campaigns: Campaign[];
   claims: ClaimPayload[];
+  vestingSchedules: VestingScheduleRecord[];
 }

@@ -44,9 +44,24 @@ NEXT_PUBLIC_CUSDC_FAUCET_ADDRESS=
 
 The app defaults to the deployed Sepolia cUSDC demo token and faucet. Override `NEXT_PUBLIC_CUSDC_TOKEN_ADDRESS` or `NEXT_PUBLIC_CUSDC_FAUCET_ADDRESS` only if you redeploy them. The TokenOps SDK resolves the Sepolia confidential airdrop factory automatically. Set `NEXT_PUBLIC_TOKENOPS_FACTORY_ADDRESS` only if using a custom factory.
 
+## Supabase setup
+
+Campaign metadata, claim payloads, and vesting records are stored in Supabase (server-side only).
+
+1. Create a Supabase project.
+2. Run `supabase/schema.sql` in the SQL editor.
+3. Add env vars locally in `frontend/.env.local` and on Vercel:
+
+```bash
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+```
+
+The frontend also accepts `NEXT_PUBLIC_SUPABASE_URL` plus `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` for local/demo projects. Prefer `SUPABASE_SERVICE_ROLE_KEY` on deployed server runtimes when Row Level Security is enabled.
+
 ## Contracts
 
-The main app flow does not depend on a registry contract. TokenOps handles the confidential airdrop lifecycle, while the app stores campaign metadata and claim payloads off-chain for the demo.
+The main app flow does not depend on a registry contract. TokenOps handles the confidential airdrop lifecycle on Sepolia.
 
 The `contracts/` package is retained for legacy/reference work, but it is not part of the recommended bounty path.
 

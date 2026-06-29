@@ -2,7 +2,7 @@
 
 ## Boundary
 
-Phase uses TokenOps for the confidential airdrop primitive. The recommended app flow keeps campaign metadata off-chain and does not require a registry contract.
+Phase uses TokenOps for the confidential airdrop primitive. Campaign metadata and claim payloads are stored in Supabase via Next.js API routes.
 
 ## Confidential Data
 

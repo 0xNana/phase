@@ -10,26 +10,25 @@ const scenePackets = ["a", "b", "c", "d", "e"];
 const productCards: Array<{ title: string; copy: string; icon: LucideIcon }> = [
   {
     title: "Claimable drops",
-    copy: "Issue wallet-bound claims so recipients reveal and claim only the allocation assigned to them.",
+    copy: "Let recipients reveal and claim only their own allocation.",
     icon: Wallet,
   },
   {
     title: "Bulk airdrops",
-    copy: "Upload recipient lists, validate wallets, and prepare private airdrop allocations for large stakeholder groups.",
+    copy: "Upload lists, validate wallets, and prepare sealed allocations.",
     icon: UploadCloud,
   },
   {
     title: "Vested airdrops",
-    copy: "Configure time-based releases while keeping schedules and allocation values sealed from public views.",
+    copy: "Set unlock schedules while amounts stay private.",
     icon: LockKeyhole,
   },
   {
     title: "Proof-safe reporting",
-    copy: "Publish status, masked recipients, and proof hashes so observers can verify progress without seeing amounts.",
+    copy: "Publish status and proof hashes without exposing amounts.",
     icon: FileCheck2,
   },
 ];
-
 
 export default function HomeDashboard({ campaign }: { campaign: Campaign | null }) {
   const hasCampaign = Boolean(campaign);
@@ -77,11 +76,9 @@ export default function HomeDashboard({ campaign }: { campaign: Campaign | null 
         </div>
 
         <div className="overview-hero-copy">
-          <span className="overview-eyebrow">Built on TokenOps SDK</span>
-          <h1 id="hero-title">Private airdrops that only you can see</h1>
-          <p>
-            Phase uses TokenOps SDK to launch claimable, bulk, and vested private airdrops without exposing plaintext allocation tables.
-          </p>
+          <span className="overview-eyebrow">TokenOps SDK</span>
+          <h1 id="hero-title">Production-ready private airdrops</h1>
+          <p>Launch claimable, bulk, and vested airdrops with sealed allocations.</p>
           <div className="overview-hero-actions">
             <Link className="button-primary" href="/admin">
               Start Airdrop <ArrowRight size={16} aria-hidden="true" />
@@ -142,8 +139,8 @@ export default function HomeDashboard({ campaign }: { campaign: Campaign | null 
       <section id="platform" className="overview-platform" aria-labelledby="platform-title">
         <div className="overview-section-heading">
           <span className="section-label">Product</span>
-          <h2 id="platform-title">A private airdrop platform for every launch path.</h2>
-          <p>Configure claimable, bulk, and vested airdrops while recipient amounts stay sealed.</p>
+          <h2 id="platform-title">One workspace for private launches.</h2>
+          <p>Claimable, bulk, and vested flows stay sealed by default.</p>
         </div>
 
         <div className="overview-surface-grid">
@@ -170,7 +167,6 @@ export default function HomeDashboard({ campaign }: { campaign: Campaign | null 
         ) : null}
       </section>
 
-
       <section className="overview-cta" aria-labelledby="cta-title">
         <div className="overview-ready-graphic" aria-hidden="true">
           <span className="ready-frame ready-frame-a" />
@@ -181,7 +177,7 @@ export default function HomeDashboard({ campaign }: { campaign: Campaign | null 
           <span className="ready-scan" />
         </div>
         <span className="section-label">Ready</span>
-        <h2 id="cta-title">Create the first private airdrop from the admin workspace.</h2>
+        <h2 id="cta-title">Create a private airdrop.</h2>
         <div className="overview-cta-actions">
           <Link className="button-primary" href="/admin">
             Start Airdrop <ArrowRight size={16} aria-hidden="true" />

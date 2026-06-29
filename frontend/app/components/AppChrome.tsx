@@ -25,28 +25,28 @@ const navLinks: Array<{
   {
     href: "/admin",
     label: "Admin",
-    description: "Build drops",
+    description: "Drops",
     icon: Send,
     match: (pathname) => pathname.startsWith("/admin"),
   },
   {
     href: "/recipient",
     label: "Recipient",
-    description: "Reveal claims",
+    description: "Claims",
     icon: UserCheck,
     match: (pathname) => pathname.startsWith("/recipient") || pathname.startsWith("/claim"),
   },
   {
     href: "/observer",
     label: "Observer",
-    description: "Track evidence",
+    description: "Proofs",
     icon: Eye,
     match: (pathname) => pathname.startsWith("/observer"),
   },
   {
     href: "/faucet",
     label: "Faucet",
-    description: "Claim cUSDC",
+    description: "cUSDC",
     icon: Coins,
     match: (pathname) => pathname.startsWith("/faucet"),
   },
@@ -217,7 +217,7 @@ export default function AppChrome({ children }: { children: React.ReactNode; cam
                 <Image className="footer-logo" src="/phase-logo.png" alt="" aria-hidden="true" width={34} height={34} />
                 <span>Phase</span>
               </Link>
-              <p>Private airdrops for claimable, bulk, and vested launches, built on TokenOps SDK.</p>
+              <p>Private airdrops built on TokenOps SDK.</p>
             </div>
 
             <nav className="app-footer-nav" aria-label="Footer navigation">

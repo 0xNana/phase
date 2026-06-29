@@ -1,19 +1,62 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
-import { isAddress } from "viem";
+import { isAddress, type Address, type Hex } from "viem";
 import { hashish, maskAddress } from "./format";
+import { getSupabase } from "./supabase/server";
 import type {
   Campaign,
   CampaignInput,
   ClaimPayload,
   IssueClaimInput,
   PublicRecipientPreview,
-  PhaseDb,
+  SaveVestingScheduleInput,
+  VestingScheduleRecord,
 } from "./types";
 
-const dbPath =
-  process.env.PHASE_DB_PATH ||
-  path.join(process.cwd(), ".data", "phase-db.json");
+type CampaignRow = {
+  id: string;
+  name: string;
+  kind: Campaign["kind"] | null;
+  token_address: string;
+  airdrop_address: string | null;
+  creator: string | null;
+  start_timestamp: number;
+  end_timestamp: number;
+  recipient_count: number;
+  claims_count: number;
+  status: Campaign["status"];
+  metadata_uri: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type PreviewRow = {
+  campaign_id: string;
+  recipient_address: string;
+  masked_address: string;
+  status: PublicRecipientPreview["status"];
+  proof_hash: string;
+  updated_at: string;
+};
+
+type ClaimRow = {
+  campaign_id: string;
+  recipient: string;
+  encrypted_handle: string;
+  input_proof: string;
+  signature: string;
+  issued_at: string;
+  revealed_at: string | null;
+  claimed_at: string | null;
+};
+
+type VestingRow = {
+  campaign_id: string;
+  recipient: string;
+  vesting_id: string;
+  manager_address: string | null;
+  batch_index: number | null;
+  tx_hash: string | null;
+  created_at: string;
+};
 
 function previewFor(address: string, status: PublicRecipientPreview["status"]): PublicRecipientPreview {
   return {
@@ -33,124 +76,300 @@ function slugify(value: string): string {
   );
 }
 
-async function ensureDb(): Promise<PhaseDb> {
-  try {
-    const raw = await fs.readFile(dbPath, "utf8");
-    return JSON.parse(raw) as PhaseDb;
-  } catch {
-    const empty: PhaseDb = {
-      campaigns: [],
-      claims: [],
-    };
-    await writeDb(empty);
-    return empty;
+function mapCampaign(row: CampaignRow, previews: PublicRecipientPreview[]): Campaign {
+  return {
+    id: row.id,
+    name: row.name,
+    kind: row.kind ?? undefined,
+    tokenAddress: row.token_address as Address,
+    airdropAddress: row.airdrop_address ? (row.airdrop_address as Address) : undefined,
+    creator: row.creator ? (row.creator as Address) : undefined,
+    startTimestamp: Number(row.start_timestamp),
+    endTimestamp: Number(row.end_timestamp),
+    recipientCount: row.recipient_count,
+    claimsCount: row.claims_count,
+    status: row.status,
+    metadataUri: row.metadata_uri ?? undefined,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    previews,
+  };
+}
+
+function mapPreview(row: PreviewRow): PublicRecipientPreview {
+  return {
+    maskedAddress: row.masked_address,
+    status: row.status,
+    proofHash: row.proof_hash as Hex,
+  };
+}
+
+function mapClaim(row: ClaimRow): ClaimPayload {
+  return {
+    campaignId: row.campaign_id,
+    recipient: row.recipient as Address,
+    encryptedInput: {
+      handle: row.encrypted_handle as Hex,
+      inputProof: row.input_proof as Hex,
+    },
+    signature: row.signature as Hex,
+    issuedAt: row.issued_at,
+    revealedAt: row.revealed_at ?? undefined,
+    claimedAt: row.claimed_at ?? undefined,
+  };
+}
+
+function mapVesting(row: VestingRow): VestingScheduleRecord {
+  return {
+    campaignId: row.campaign_id,
+    recipient: row.recipient as Address,
+    vestingId: row.vesting_id as Hex,
+    managerAddress: row.manager_address ? (row.manager_address as Address) : undefined,
+    batchIndex: row.batch_index ?? undefined,
+    txHash: row.tx_hash ? (row.tx_hash as Hex) : undefined,
+    createdAt: row.created_at,
+  };
+}
+
+async function loadPreviewsForCampaigns(campaignIds: string[]): Promise<Map<string, PublicRecipientPreview[]>> {
+  const previewsByCampaign = new Map<string, PublicRecipientPreview[]>();
+  if (campaignIds.length === 0) return previewsByCampaign;
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("campaign_previews")
+    .select("campaign_id, recipient_address, masked_address, status, proof_hash, updated_at")
+    .in("campaign_id", campaignIds)
+    .order("updated_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+
+  for (const row of (data ?? []) as PreviewRow[]) {
+    const current = previewsByCampaign.get(row.campaign_id) ?? [];
+    if (current.length >= 8) continue;
+    current.push(mapPreview(row));
+    previewsByCampaign.set(row.campaign_id, current);
   }
+
+  return previewsByCampaign;
 }
 
-async function writeDb(db: PhaseDb): Promise<void> {
-  await fs.mkdir(path.dirname(dbPath), { recursive: true });
-  await fs.writeFile(dbPath, `${JSON.stringify(db, null, 2)}\n`, "utf8");
-}
-
-export async function listCampaigns(): Promise<Campaign[]> {
-  const db = await ensureDb();
-  return db.campaigns.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-}
-
-export async function getCampaign(id: string): Promise<Campaign | null> {
-  const db = await ensureDb();
-  return db.campaigns.find((campaign) => campaign.id === id) ?? null;
-}
-
-export async function createCampaign(input: CampaignInput): Promise<Campaign> {
-  const db = await ensureDb();
+async function upsertPreview(campaignId: string, address: string, status: PublicRecipientPreview["status"]): Promise<void> {
+  const supabase = getSupabase();
+  const preview = previewFor(address, status);
   const now = new Date().toISOString();
-  const nowTimestamp = Math.floor(Date.now() / 1000);
-  const startTimestamp = input.startTimestamp ?? nowTimestamp;
-  const endTimestamp = input.endTimestamp && input.endTimestamp > startTimestamp ? input.endTimestamp : startTimestamp + 86400;
-  const baseId = slugify(input.name);
+
+  const { error } = await supabase.from("campaign_previews").upsert(
+    {
+      campaign_id: campaignId,
+      recipient_address: address.toLowerCase(),
+      masked_address: preview.maskedAddress,
+      status: preview.status,
+      proof_hash: preview.proofHash,
+      updated_at: now,
+    },
+    { onConflict: "campaign_id,recipient_address" },
+  );
+
+  if (error) throw new Error(error.message);
+
+  const { data: overflowRows, error: overflowError } = await supabase
+    .from("campaign_previews")
+    .select("id")
+    .eq("campaign_id", campaignId)
+    .order("updated_at", { ascending: false })
+    .range(8, 1000);
+
+  if (overflowError) throw new Error(overflowError.message);
+
+  const overflowIds = (overflowRows ?? []).map((row) => row.id as number);
+  if (overflowIds.length === 0) return;
+
+  const { error: deleteError } = await supabase.from("campaign_previews").delete().in("id", overflowIds);
+  if (deleteError) throw new Error(deleteError.message);
+}
+
+async function uniqueCampaignId(name: string): Promise<string> {
+  const supabase = getSupabase();
+  const baseId = slugify(name);
   let id = baseId;
   let i = 2;
-  while (db.campaigns.some((campaign) => campaign.id === id)) {
+
+  while (true) {
+    const { data, error } = await supabase.from("campaigns").select("id").eq("id", id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return id;
     id = `${baseId}-${i}`;
     i += 1;
   }
+}
 
-  const campaign: Campaign = {
+export async function listCampaigns(): Promise<Campaign[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from("campaigns").select("*").order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? []) as CampaignRow[];
+  const previewsByCampaign = await loadPreviewsForCampaigns(rows.map((row) => row.id));
+  return rows.map((row) => mapCampaign(row, previewsByCampaign.get(row.id) ?? []));
+}
+
+export async function getCampaign(id: string): Promise<Campaign | null> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from("campaigns").select("*").eq("id", id).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+
+  const previewsByCampaign = await loadPreviewsForCampaigns([id]);
+  return mapCampaign(data as CampaignRow, previewsByCampaign.get(id) ?? []);
+}
+
+export async function createCampaign(input: CampaignInput): Promise<Campaign> {
+  const supabase = getSupabase();
+  const now = new Date().toISOString();
+  const nowTimestamp = Math.floor(Date.now() / 1000);
+  const startTimestamp = input.startTimestamp ?? nowTimestamp;
+  const endTimestamp =
+    input.endTimestamp && input.endTimestamp > startTimestamp ? input.endTimestamp : startTimestamp + 86400;
+  const id = await uniqueCampaignId(input.name);
+
+  const row: CampaignRow = {
     id,
     name: input.name.trim(),
     kind: input.kind,
-    tokenAddress: input.tokenAddress,
-    airdropAddress: input.airdropAddress,
-    creator: input.creator,
-    startTimestamp,
-    endTimestamp,
-    recipientCount: input.recipientCount,
-    claimsCount: 0,
+    token_address: input.tokenAddress,
+    airdrop_address: input.airdropAddress ?? null,
+    creator: input.creator ?? null,
+    start_timestamp: startTimestamp,
+    end_timestamp: endTimestamp,
+    recipient_count: input.recipientCount,
+    claims_count: 0,
     status: input.status ?? (input.airdropAddress ? "live" : "draft"),
-    metadataUri: input.metadataUri,
-    createdAt: now,
-    updatedAt: now,
-    previews: [],
+    metadata_uri: input.metadataUri ?? null,
+    created_at: now,
+    updated_at: now,
   };
 
-  db.campaigns.unshift(campaign);
-  await writeDb(db);
-  return campaign;
+  const { error } = await supabase.from("campaigns").insert(row);
+  if (error) throw new Error(error.message);
+
+  return mapCampaign(row, []);
 }
 
 export async function updateCampaignStatus(id: string, status: Campaign["status"]): Promise<Campaign | null> {
-  const db = await ensureDb();
-  const campaign = db.campaigns.find((item) => item.id === id);
-  if (!campaign) return null;
+  const supabase = getSupabase();
+  const updatedAt = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("campaigns")
+    .update({ status, updated_at: updatedAt })
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
 
-  campaign.status = status;
-  campaign.updatedAt = new Date().toISOString();
-  await writeDb(db);
-  return campaign;
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+
+  const previewsByCampaign = await loadPreviewsForCampaigns([id]);
+  return mapCampaign(data as CampaignRow, previewsByCampaign.get(id) ?? []);
 }
 
 export async function saveClaimPayload(campaignId: string, input: IssueClaimInput): Promise<ClaimPayload> {
-  const db = await ensureDb();
-  const campaign = db.campaigns.find((item) => item.id === campaignId);
+  const supabase = getSupabase();
+  const campaign = await getCampaign(campaignId);
   if (!campaign) throw new Error("Campaign not found");
 
-  const existingIndex = db.claims.findIndex(
-    (claim) =>
-      claim.campaignId === campaignId &&
-      claim.recipient.toLowerCase() === input.recipient.toLowerCase(),
-  );
-
-  const payload: ClaimPayload = {
-    campaignId,
-    recipient: input.recipient,
-    encryptedInput: input.encryptedInput,
+  const issuedAt = new Date().toISOString();
+  const row = {
+    campaign_id: campaignId,
+    recipient: input.recipient.toLowerCase(),
+    encrypted_handle: input.encryptedInput.handle,
+    input_proof: input.encryptedInput.inputProof,
     signature: input.signature,
-    issuedAt: new Date().toISOString(),
+    issued_at: issuedAt,
+    revealed_at: null,
+    claimed_at: null,
   };
 
-  if (existingIndex >= 0) {
-    db.claims[existingIndex] = payload;
-  } else {
-    db.claims.push(payload);
-  }
+  const { data, error } = await supabase
+    .from("claims")
+    .upsert(row, { onConflict: "campaign_id,recipient" })
+    .select("*")
+    .single();
 
-  campaign.previews = upsertPreview(campaign.previews, input.recipient, "pending");
-  campaign.updatedAt = new Date().toISOString();
-  await writeDb(db);
-  return payload;
+  if (error) throw new Error(error.message);
+
+  await upsertPreview(campaignId, input.recipient, "pending");
+
+  const { error: campaignError } = await supabase
+    .from("campaigns")
+    .update({ updated_at: issuedAt })
+    .eq("id", campaignId);
+
+  if (campaignError) throw new Error(campaignError.message);
+
+  return mapClaim(data as ClaimRow);
 }
 
 export async function getClaimPayload(campaignId: string, recipient: string): Promise<ClaimPayload | null> {
   if (!isAddress(recipient)) return null;
-  const db = await ensureDb();
-  return (
-    db.claims.find(
-      (claim) =>
-        claim.campaignId === campaignId &&
-        claim.recipient.toLowerCase() === recipient.toLowerCase(),
-    ) ?? null
-  );
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("claims")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .eq("recipient", recipient.toLowerCase())
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+
+  return mapClaim(data as ClaimRow);
+}
+
+export async function saveVestingSchedules(
+  campaignId: string,
+  inputs: SaveVestingScheduleInput[],
+): Promise<VestingScheduleRecord[]> {
+  const campaign = await getCampaign(campaignId);
+  if (!campaign) throw new Error("Campaign not found");
+
+  const supabase = getSupabase();
+  const now = new Date().toISOString();
+  const rows = inputs.map((input) => ({
+    campaign_id: campaignId,
+    recipient: input.recipient.toLowerCase(),
+    vesting_id: input.vestingId,
+    manager_address: input.managerAddress ?? campaign.airdropAddress ?? null,
+    batch_index: input.batchIndex ?? null,
+    tx_hash: input.txHash ?? null,
+    created_at: now,
+  }));
+
+  const { data, error } = await supabase.from("vesting_schedules").upsert(rows, { onConflict: "campaign_id,vesting_id" }).select("*");
+  if (error) throw new Error(error.message);
+
+  for (const input of inputs) {
+    await upsertPreview(campaignId, input.recipient, "pending");
+  }
+
+  const { error: campaignError } = await supabase.from("campaigns").update({ updated_at: now }).eq("id", campaignId);
+  if (campaignError) throw new Error(campaignError.message);
+
+  return ((data ?? []) as VestingRow[]).map(mapVesting);
+}
+
+export async function listVestingSchedules(campaignId: string, recipient?: string | null): Promise<VestingScheduleRecord[]> {
+  if (recipient && !isAddress(recipient)) return [];
+
+  const supabase = getSupabase();
+  let query = supabase.from("vesting_schedules").select("*").eq("campaign_id", campaignId);
+  if (recipient) query = query.eq("recipient", recipient.toLowerCase());
+
+  const { data, error } = await query.order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+
+  return ((data ?? []) as VestingRow[]).map(mapVesting);
 }
 
 export async function markClaimState(
@@ -159,32 +378,49 @@ export async function markClaimState(
   state: "revealed" | "claimed",
 ): Promise<Campaign | null> {
   if (!isAddress(recipient)) return null;
-  const db = await ensureDb();
-  const campaign = db.campaigns.find((item) => item.id === campaignId);
-  const claim = db.claims.find(
-    (item) => item.campaignId === campaignId && item.recipient.toLowerCase() === recipient.toLowerCase(),
-  );
-  if (!campaign || !claim) return null;
+
+  const supabase = getSupabase();
+  const campaign = await getCampaign(campaignId);
+  if (!campaign) return null;
+
+  const { data: claim, error: claimLookupError } = await supabase
+    .from("claims")
+    .select("*")
+    .eq("campaign_id", campaignId)
+    .eq("recipient", recipient.toLowerCase())
+    .maybeSingle();
+
+  if (claimLookupError) throw new Error(claimLookupError.message);
+  if (!claim) return null;
 
   const now = new Date().toISOString();
-  if (state === "revealed") claim.revealedAt = now;
-  if (state === "claimed" && !claim.claimedAt) {
-    claim.claimedAt = now;
-    campaign.claimsCount += 1;
+  const claimPatch: Partial<ClaimRow> = {};
+  if (state === "revealed") claimPatch.revealed_at = now;
+  if (state === "claimed" && !claim.claimed_at) claimPatch.claimed_at = now;
+
+  const { error: claimError } = await supabase
+    .from("claims")
+    .update(claimPatch)
+    .eq("campaign_id", campaignId)
+    .eq("recipient", recipient.toLowerCase());
+
+  if (claimError) throw new Error(claimError.message);
+
+  if (state === "claimed" && !claim.claimed_at) {
+    const { error: countError } = await supabase
+      .from("campaigns")
+      .update({
+        claims_count: campaign.claimsCount + 1,
+        updated_at: now,
+      })
+      .eq("id", campaignId);
+
+    if (countError) throw new Error(countError.message);
+  } else {
+    const { error: touchError } = await supabase.from("campaigns").update({ updated_at: now }).eq("id", campaignId);
+    if (touchError) throw new Error(touchError.message);
   }
 
-  campaign.previews = upsertPreview(campaign.previews, recipient, state);
-  campaign.updatedAt = now;
-  await writeDb(db);
-  return campaign;
-}
-
-function upsertPreview(
-  previews: PublicRecipientPreview[],
-  address: string,
-  status: PublicRecipientPreview["status"],
-): PublicRecipientPreview[] {
-  const next = previews.filter((preview) => preview.maskedAddress !== maskAddress(address));
-  next.unshift(previewFor(address, status));
-  return next.slice(0, 8);
+  await upsertPreview(campaignId, recipient, state);
+  return getCampaign(campaignId);
 }

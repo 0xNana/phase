@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useZamaSDK } from "@zama-fhe/react-sdk";
 import {
   type AirdropParams,
@@ -26,25 +26,23 @@ import {
   useRegister,
   type DisperseMode,
 } from "@tokenops/sdk/fhe-disperse/react";
-import { setOperator } from "@tokenops/sdk/fhe-disperse";
-import { getFheDisperseSingletonAddress } from "@tokenops/sdk";
+import { erc7984OperatorAbi, setOperator } from "@tokenops/sdk/fhe";
+import { getFheAirdropFactoryAddress, getFheDisperseSingletonAddress } from "@tokenops/sdk";
 import {
   useBatchCreateVesting,
   useCreateManagerAndGetAddress,
   usePause,
   useSetMaxBatchSize,
   useUnpause,
-  useWithdrawAdmin,
   type VestingParams,
 } from "@tokenops/sdk/fhe-vesting/react";
+import { confidentialVestingManagerAbi } from "@tokenops/sdk/fhe-vesting";
 import {
   AlertTriangle,
+  ArrowLeft,
   CalendarDays,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Copy,
-  Database,
   Download,
   FileLock2,
   KeyRound,
@@ -59,7 +57,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { formatEther, isAddress, keccak256, parseUnits, toHex, zeroAddress, type Address, type Hex } from "viem";
+import { formatEther, isAddress, keccak256, parseEventLogs, toHex, zeroAddress, type Address, type Hex } from "viem";
 import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { configuredToken, cusdcTokenAddress, sepoliaChainId, tokenOpsFactoryAddress } from "@/lib/env";
 import { dateInputToUnix, formatTokenUnits, maskAddress, nowUnix, safeAddress, unixToDateInput } from "@/lib/format";
@@ -72,7 +70,14 @@ const initialTokenAddress = configuredToken === zeroAddress ? "" : configuredTok
 
 type ReleaseCadence = "single" | "monthly" | "milestone";
 type BatchStrategy = "auto" | "fixed" | "manual";
+type ClaimCreateMode = "fund" | "deploy";
 type LaunchStep = "mode" | "details" | "recipients" | "flow";
+const launchProgressByStep: Record<LaunchStep, number> = {
+  mode: 25,
+  details: 50,
+  recipients: 75,
+  flow: 100,
+};
 
 type VestingCliff = "none" | "30d" | "90d" | "180d";
 type VestingTimelock = "none" | "7d" | "30d";
@@ -136,7 +141,7 @@ const vestingCliffUnlockOptions: Array<{ id: VestingCliffUnlock; label: string; 
   { id: "2500", label: "25%", bps: 2500 },
 ];
 
-export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: Campaign[] }) {
+export default function AdminBuilder() {
   const { address } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
@@ -171,6 +176,7 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
 
   const [campaignKind, setCampaignKind] = useState<CampaignKind>("claim");
   const [releaseCadence, setReleaseCadence] = useState<ReleaseCadence>("monthly");
+  const [claimCreateMode, setClaimCreateMode] = useState<ClaimCreateMode>("fund");
   const observerMode = "public";
   const [batchStrategy, setBatchStrategy] = useState<BatchStrategy>("auto");
   const [batchDisperseMode, setBatchDisperseMode] = useState<DisperseMode>("direct");
@@ -180,6 +186,8 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
   const [executedBatchIndexes, setExecutedBatchIndexes] = useState<number[]>([]);
   const [failedBatchIndexes, setFailedBatchIndexes] = useState<number[]>([]);
   const [directApprovalPending, setDirectApprovalPending] = useState(false);
+  const [claimApprovalPending, setClaimApprovalPending] = useState(false);
+  const [vestingApprovalPending, setVestingApprovalPending] = useState(false);
   const [vestingBatchSize, setVestingBatchSize] = useState("100");
   const [vestingCliff, setVestingCliff] = useState<VestingCliff>("none");
   const [vestingTimelock, setVestingTimelock] = useState<VestingTimelock>("none");
@@ -194,7 +202,6 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
   const [latestVestingOpHash, setLatestVestingOpHash] = useState<Hex | null>(null);
   const [vestingProgress, setVestingProgress] = useState({ done: 0, total: 0 });
   const [vestingPaused, setVestingPaused] = useState(false);
-  const [vestingWithdrawAmount, setVestingWithdrawAmount] = useState("");
   const [fundedCampaign, setFundedCampaign] = useState(false);
   const [claimDeployment, setClaimDeployment] = useState<ClaimDeployment | null>(null);
   const allowExtensions = true;
@@ -204,7 +211,7 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
   const [endDate, setEndDate] = useState(unixToDateInput(defaultEnd));
   const [csv, setCsv] = useState("");
   const [airdropAddress, setAirdropAddress] = useState<Address | "">("");
-  const [savedCampaign, setSavedCampaign] = useState<Campaign | null>(initialCampaigns[0] ?? null);
+  const [savedCampaign, setSavedCampaign] = useState<Campaign | null>(null);
   const [issueProgress, setIssueProgress] = useState({ done: 0, total: 0 });
   const [status, setStatus] = useState("Ready.");
   const [error, setError] = useState<string | null>(null);
@@ -222,7 +229,6 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
   const pauseVesting = usePause(vestingManagerOptions);
   const unpauseVesting = useUnpause(vestingManagerOptions);
   const setMaxVestingBatchSize = useSetMaxBatchSize(vestingManagerOptions);
-  const withdrawVestingAdmin = useWithdrawAdmin(vestingManagerOptions);
 
   const parsed = useMemo(() => parseRecipientCsv(csv), [csv]);
   const recipientExampleCsvHref = useMemo(() => {
@@ -256,10 +262,6 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
   const activeBatchPending = activeBatchRows.length > 0 && !executedBatchSet.has(activeBatchIndex);
   const activeBatchRecipients = useMemo(() => activeBatchRows.map((row) => row.address), [activeBatchRows]);
   const activeBatchAmounts = useMemo(() => activeBatchRows.map((row) => row.amount), [activeBatchRows]);
-  const executedRecipientCount = batchGroups.reduce(
-    (count, group, index) => count + (executedBatchSet.has(index) ? group.length : 0),
-    0,
-  );
   const failedBatchRows = useMemo(
     () => failedBatchIndexes.flatMap((index) => batchGroups[index] ?? []),
     [batchGroups, failedBatchIndexes],
@@ -293,37 +295,72 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
   const vestingCliffWindowValid = vestingCliffSeconds === 0 || (dateValid && startTimestamp + vestingCliffSeconds < endTimestamp);
   const vestingBpsValid = vestingInitialUnlockBps + vestingCliffAmountBps <= 10000;
   const vestingScheduleReady = recipientReady && dateValid && vestingCliffWindowValid && vestingBpsValid;
-  const vestingCanCreateSchedules = Boolean(address) && Boolean(vestingManagerAddress) && tokenValid && vestingScheduleReady;
-  const vestingWithdrawRawAmount = useMemo(() => parseTokenUnitsInput(vestingWithdrawAmount), [vestingWithdrawAmount]);
+  const workflowToken = tokenValid ? (tokenAddress as Address) : undefined;
+  const vestingManagerApproval = useQuery({
+    queryKey: ["phase", "vesting-manager-operator", chainId, address, workflowToken, vestingManagerAddress],
+    enabled:
+      campaignKind === "vesting" &&
+      Boolean(address) &&
+      Boolean(workflowToken) &&
+      Boolean(vestingManagerAddress) &&
+      Boolean(publicClient),
+    queryFn: async () => {
+      if (!address || !workflowToken || !vestingManagerAddress || !publicClient) return false;
+      return publicClient.readContract({
+        address: workflowToken,
+        abi: erc7984OperatorAbi,
+        functionName: "isOperator",
+        args: [address, vestingManagerAddress],
+      });
+    },
+  });
+  const vestingManagerApproved = Boolean(vestingManagerApproval.data);
+  const canApproveVestingManager =
+    Boolean(address) &&
+    Boolean(workflowToken) &&
+    Boolean(vestingManagerAddress) &&
+    Boolean(publicClient) &&
+    Boolean(walletClient.data) &&
+    !vestingManagerApproved;
+  const vestingApprovalLabel = !vestingManagerAddress
+    ? "Deploy manager first"
+    : vestingManagerApproval.isError
+      ? "Approval check failed"
+      : vestingManagerApproved
+        ? "Manager approved"
+        : vestingManagerApproval.isFetching
+          ? "Checking manager approval"
+          : "Approve manager";
+  const vestingCanCreateSchedules = Boolean(address) && Boolean(vestingManagerAddress) && tokenValid && vestingScheduleReady && vestingManagerApproved;
   const vestingOpsReady = Boolean(address) && Boolean(vestingManagerAddress);
-  const vestingFlowSteps = [
-    {
-      label: "Deploy Manager",
-      value: vestingManagerAddress ? maskAddress(vestingManagerAddress) : "ready to deploy",
-      ready: Boolean(vestingManagerAddress),
-      available: Boolean(address) && !vestingManagerAddress && tokenValid && recipientReady && dateValid && vestingScheduleReady,
+  const claimToken = workflowToken;
+  const claimFactoryAddress = tokenOpsFactoryAddress ?? getFheAirdropFactoryAddress(chainId ?? sepoliaChainId);
+  const claimFactoryApproval = useQuery({
+    queryKey: ["phase", "claim-factory-operator", chainId, address, claimToken, claimFactoryAddress],
+    enabled: campaignKind === "claim" && Boolean(address) && Boolean(claimToken) && Boolean(claimFactoryAddress) && Boolean(publicClient),
+    queryFn: async () => {
+      if (!address || !claimToken || !claimFactoryAddress || !publicClient) return false;
+      return publicClient.readContract({
+        address: claimToken,
+        abi: erc7984OperatorAbi,
+        functionName: "isOperator",
+        args: [address, claimFactoryAddress],
+      });
     },
-    {
-      label: "Open Vestings",
-      value:
-        parsed.rows.length > 0 && createdVestingRecipientCount === parsed.rows.length
-          ? "all schedules created"
-          : `${createdVestingRecipientCount.toLocaleString()} created`,
-      ready: parsed.rows.length > 0 && createdVestingRecipientCount === parsed.rows.length,
-      available: vestingCanCreateSchedules && activeVestingPending && !vestingPaused,
-    },
-    {
-      label: "Recipient Claims",
-      value: dateValid ? releaseIntervalLabel(releaseCadence, vestingReleaseIntervalSecs) : "window invalid",
-      ready: dateValid && createdVestingRecipientCount > 0,
-    },
-    {
-      label: "Manager Ops",
-      value: vestingPaused ? "paused" : latestVestingOpHash ? maskAddress(latestVestingOpHash) : "ready",
-      ready: Boolean(vestingManagerAddress) && !vestingPaused,
-    },
-  ];
-  const batchToken = tokenValid ? (tokenAddress as Address) : undefined;
+  });
+  const claimFactoryApproved = Boolean(claimFactoryApproval.data);
+  const claimApprovalLabel = !claimFactoryAddress
+    ? "Airdrop factory unavailable"
+    : claimFactoryApproval.isError
+      ? "Approval check failed"
+      : claimFactoryApproved
+        ? "Token approval confirmed"
+        : claimFactoryApproval.isFetching
+          ? "Checking token approval"
+          : "Token approval needed";
+  const canApproveClaimFactory =
+    Boolean(address) && Boolean(claimToken) && Boolean(claimFactoryAddress) && Boolean(publicClient) && Boolean(walletClient.data) && !claimFactoryApproved;
+  const batchToken = claimToken;
   const batchIsWalletMode = batchDisperseMode !== "direct";
   const batchSingletonAddress = getFheDisperseSingletonAddress(chainId ?? sepoliaChainId);
   const batchRegistered = useIsRegistered({ user: address });
@@ -370,16 +407,16 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
     registerDisperse.isPending ||
     approveDisperseWallets.isPending ||
     recoverDisperseWallets.isPending ||
+    claimApprovalPending ||
+    vestingApprovalPending ||
     directApprovalPending ||
     createVestingManager.isPending ||
     batchCreateVesting.isPending ||
     pauseVesting.isPending ||
     unpauseVesting.isPending ||
-    setMaxVestingBatchSize.isPending ||
-    withdrawVestingAdmin.isPending;
+    setMaxVestingBatchSize.isPending;
   const progressPercent = issueProgress.total > 0 ? Math.round((issueProgress.done / issueProgress.total) * 100) : 0;
   const vestingProgressPercent = vestingProgress.total > 0 ? Math.round((vestingProgress.done / vestingProgress.total) * 100) : 0;
-  const claimIssuedCount = issueProgress.total > 0 ? issueProgress.done : 0;
   const claimPayloadReady = issueProgress.total > 0 && issueProgress.done === issueProgress.total;
   const claimPortalHref = savedCampaign ? `/claim/${savedCampaign.id}` : "";
   const resolvedClaimGasFee = factoryCustomFee.data?.enabled ? factoryCustomFee.data.gasFee : factoryDefaultGasFee.data;
@@ -390,13 +427,14 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
     tokenValid &&
     recipientReady &&
     dateValid;
-  const canCreateAndFundClaim = canDeploy && claimFeeReady && totalAmount > 0n;
+  const canCreateAndFundClaim = canDeploy && claimFeeReady && claimFactoryApproved && totalAmount > 0n;
   const canFundClaimPot =
     Boolean(address) &&
     Boolean(targetAirdrop) &&
     Boolean(claimDeployment) &&
     !fundedCampaign &&
     tokenValid &&
+    claimFactoryApproved &&
     recipientReady &&
     dateValid &&
     totalAmount > 0n;
@@ -417,22 +455,81 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
     vestingCanCreateSchedules && !vestingPaused && vestingGroups.length > 0 && createdVestingSet.size < vestingGroups.length;
   const vestingCanOpenNext = vestingCanCreateSchedules && !vestingPaused && activeVestingPending;
   const vestingCanRetry = failedVestingIndexes.length > 0;
-  const vestingShowPauseAction = vestingOpsReady && vestingPausable && !vestingPaused;
-  const vestingShowUnpauseAction = vestingOpsReady && vestingPausable && vestingPaused;
-  const vestingShowManagerOps = vestingOpsReady && !vestingCanOpenAll && !vestingCanOpenNext && !vestingCanRetry;
-  const showClaimCreateActions = !targetAirdrop;
+  const claimNeedsFreshDeployment = Boolean(targetAirdrop) && !fundedCampaign && !claimDeployment;
+  const showClaimCreateActions = !targetAirdrop || claimNeedsFreshDeployment;
   const showClaimFundAction = Boolean(targetAirdrop) && !fundedCampaign && canFundClaimPot;
-  const showClaimFundResumeHint = Boolean(targetAirdrop) && !fundedCampaign && !canFundClaimPot;
   const showClaimSignAction = fundedCampaign && !claimPayloadReady;
   const showClaimPortalAction = claimPayloadReady && Boolean(claimPortalHref);
+  const showClaimApprovalAction = (showClaimCreateActions || showClaimFundAction) && !claimFactoryApproved;
+  const showClaimCreateChoice = showClaimCreateActions && claimFactoryApproved;
+  const claimFundAmountLabel = totalAmount > 0n ? `${formatTokenUnits(totalAmount)} cUSDC` : "Airdrop";
+  const selectedClaimCreateLabel = claimCreateMode === "fund" ? `Create + Fund ${claimFundAmountLabel}` : "Create Airdrop Only";
+  const selectedClaimCreateDisabled =
+    busy ||
+    (claimCreateMode === "fund"
+      ? !canCreateAndFundClaim
+      : !canDeploy || !claimFeeReady);
   const launchWindowDays = dateValid ? Math.ceil((endTimestamp - startTimestamp) / 86400) : 0;
-  const launchDetailsReady = Boolean(campaignName.trim()) && tokenValid && (campaignKind === "batch" || dateValid);
-  const launchTimelineLabel =
-    campaignKind === "batch"
-      ? "No claim window required"
-      : dateValid
-        ? `${launchWindowDays} day window`
-        : "Set a valid window";
+  const vestingRecipientTotal = parsed.rows.length;
+  const vestingComplete = vestingRecipientTotal > 0 && createdVestingRecipientCount === vestingRecipientTotal;
+  const vestingCompletionPercent = vestingRecipientTotal > 0 ? Math.round((createdVestingRecipientCount / vestingRecipientTotal) * 100) : 0;
+  const vestingReadyToOpen = Boolean(vestingManagerAddress) && vestingScheduleReady && !vestingPaused && !vestingComplete;
+  const vestingShowSaveAction = !vestingManagerAddress && !vestingComplete;
+  const vestingShowPauseAction = vestingOpsReady && vestingPausable && !vestingPaused && !vestingComplete;
+  const vestingShowUnpauseAction = vestingOpsReady && vestingPausable && vestingPaused;
+  const vestingShowBatchCapAction = vestingOpsReady && !vestingComplete && !vestingCanOpenAll && !vestingCanOpenNext && !vestingCanRetry;
+  const vestingRecipientHref = vestingComplete && savedCampaign ? `/vesting/${savedCampaign.id}` : null;
+  const vestingStateLabel = !vestingManagerAddress
+    ? "Deploy manager"
+    : !vestingManagerApproved
+      ? "Approve manager"
+    : vestingPaused
+      ? "Paused"
+      : vestingComplete
+        ? "Complete"
+        : vestingReadyToOpen
+          ? "Ready"
+          : "Needs attention";
+  const vestingHeadline =
+    vestingRecipientTotal === 0
+      ? "Import recipients to build schedules"
+      : !vestingManagerAddress
+        ? `Deploy manager for ${vestingRecipientTotal.toLocaleString()} wallets`
+        : !vestingManagerApproved
+          ? "Approve manager spending"
+        : vestingComplete
+          ? "Schedules open"
+          : vestingPaused
+            ? "Manager paused"
+            : `Open ${Math.max(vestingRecipientTotal - createdVestingRecipientCount, 0).toLocaleString()} remaining schedules`;
+  const vestingGuidance = !tokenValid
+    ? "Set a valid cUSDC token before deploying."
+    : parsed.errors.length > 0
+      ? "Fix invalid recipient rows before launch."
+      : !dateValid
+        ? "Set a valid vesting window."
+        : !vestingCliffWindowValid
+          ? "Choose a cliff inside the vesting window."
+          : !vestingBpsValid
+            ? "Reduce start and cliff unlocks to 100% or less."
+            : !vestingManagerAddress
+              ? "Deploy once, then open schedules in batches."
+              : !vestingManagerApproved
+                ? "Approve token spending by the manager contract before opening schedules."
+              : vestingComplete
+                ? "Recipient vesting is ready."
+                : "Open schedules now or run the next pending batch.";
+  const vestingCadenceLabel = releaseIntervalLabel(releaseCadence, vestingReleaseIntervalSecs);
+  const vestingUnlockTotalLabel = vestingBpsValid ? bpsLabel(vestingInitialUnlockBps + vestingCliffAmountBps) : "Over 100%";
+  const vestingPolicyLabel = `${vestingRevocable ? "Revocable" : "Locked"}, ${vestingSplitEnabled ? "splits on" : "splits off"}, ${
+    vestingPausable ? "pause on" : "pause off"
+  }`;
+  const vestingBatchLabel =
+    vestingGroups.length > 0
+      ? `${vestingGroups.length.toLocaleString()} ${vestingGroups.length === 1 ? "batch" : "batches"}, max ${vestingBatchSizeNumber.toLocaleString()}`
+      : `Max ${vestingBatchSizeNumber.toLocaleString()}`;
+  const launchDetailsReady = Boolean(campaignName.trim()) && tokenValid && (campaignKind !== "claim" || dateValid);
+  const launchTimelineLabel = dateValid ? `${launchWindowDays} day window` : "Set a valid window";
   const selectedKind = campaignKinds.find((item) => item.id === campaignKind) ?? campaignKinds[0];
   const modeSummary =
     campaignKind === "batch"
@@ -443,7 +540,7 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
 
   const launchDialogTitle =
     launchStep === "mode"
-      ? "Choose launch mode"
+      ? "Choose mode"
       : launchStep === "details"
         ? `${selectedKind.label} details`
         : launchStep === "recipients"
@@ -451,16 +548,9 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
           : campaignKind === "batch"
             ? "Disperse"
             : campaignKind === "vesting"
-              ? "Vested airdrop"
+              ? "Vesting"
               : "Claimable airdrop";
-  const modeProgressLabel =
-    campaignKind === "batch"
-      ? `${executedRecipientCount.toLocaleString()} / ${parsed.rows.length.toLocaleString()} processed`
-      : campaignKind === "vesting"
-        ? `${createdVestingRecipientCount.toLocaleString()} / ${parsed.rows.length.toLocaleString()} created`
-        : `${claimIssuedCount.toLocaleString()} / ${parsed.rows.length.toLocaleString()} signed`;
-  const launchJourneyTitle = launchStep === "details" ? selectedKind.label + " details" : launchStep === "recipients" ? "Import recipients" : launchDialogTitle;
-  const launchCanAdvance = launchStep === "details" ? launchDetailsReady : launchStep === "recipients" ? recipientReady : false;
+  const launchProgressPercent = launchProgressByStep[launchStep];
 
   async function copyCusdcTokenAddress() {
     setError(null);
@@ -521,6 +611,38 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
     return result.campaign;
   }
 
+  async function persistVestingSchedules(campaign: Campaign, batchIndex: number, hash: Hex) {
+    if (!publicClient) throw new Error("Public client is not ready. Could not read vesting receipt.");
+    if (!vestingManagerAddress) throw new Error("Vesting manager address is missing.");
+
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    const events = parseEventLogs({
+      abi: confidentialVestingManagerAbi,
+      eventName: "VestingCreated",
+      logs: receipt.logs,
+    });
+
+    if (events.length === 0) {
+      throw new Error("Vesting transaction confirmed, but no schedules were emitted.");
+    }
+
+    const response = await fetch(`/api/campaigns/${campaign.id}/vestings`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        vestings: events.map((event) => ({
+          recipient: event.args.recipient,
+          vestingId: event.args.vestingId,
+          managerAddress: vestingManagerAddress,
+          batchIndex,
+          txHash: hash,
+        })),
+      }),
+    });
+    const result = (await response.json()) as { error?: string };
+    if (!response.ok) throw new Error(result.error ?? "Could not save vesting schedules");
+  }
+
   async function deployCampaign(mode: "deploy" | "fund") {
     setError(null);
     if (!address) {
@@ -569,7 +691,7 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
       queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-airdrop"] });
       setStatus(mode === "fund" ? "Airdrop created and funded. Sign claims next." : "Airdrop created. Fund it before signing claims.");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Airdrop creation failed");
+      setError(formatClaimFundingError(cause, "Airdrop creation failed"));
     }
   }
 
@@ -585,7 +707,7 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
       return;
     }
     if (!claimDeployment) {
-      setError("Create + Fund Airdrop is the stable path for new claim campaigns. Two-step funding requires the same create session.");
+      setError("Use Create + Fund Airdrop for new claim campaigns.");
       return;
     }
     if (!recipientReady || totalAmount <= 0n) {
@@ -608,7 +730,7 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
       queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-airdrop"] });
       setStatus("Airdrop funded. Sign claim authorizations next.");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Funding failed");
+      setError(formatClaimFundingError(cause, "Funding failed"));
     }
   }
 
@@ -642,7 +764,7 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
       setVestingPaused(false);
       await persistCampaign(result.manager);
       queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-vesting"] });
-      setStatus("Vesting manager live.");
+      setStatus("Vesting manager live. Approve token spending next.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Vesting deployment failed");
     }
@@ -659,7 +781,7 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
       return;
     }
     if (!vestingPausable) {
-      setError("Pause control is off for this manager configuration.");
+      setError("Pause is off for this manager configuration.");
       return;
     }
 
@@ -684,50 +806,21 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
       return;
     }
     if (!vestingManagerAddress) {
-      setError("Deploy the vesting manager before setting the batch cap.");
+      setError("Deploy the vesting manager before setting the cap.");
       return;
     }
 
     try {
-      setStatus("Setting vesting batch cap.");
+      setStatus("Setting cap.");
       const hash = await setMaxVestingBatchSize.mutateAsync({
         newMax: BigInt(vestingBatchSizeNumber),
         account: address,
       });
       setLatestVestingOpHash(hash);
       queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-vesting"] });
-      setStatus(`Vesting batch cap set to ${vestingBatchSizeNumber.toLocaleString()}.`);
+      setStatus(`Cap set to ${vestingBatchSizeNumber.toLocaleString()}.`);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Batch cap update failed");
-    }
-  }
-
-  async function withdrawVestingResidual() {
-    setError(null);
-    if (!address) {
-      setError("Connect the admin wallet first.");
-      return;
-    }
-    if (!vestingManagerAddress) {
-      setError("Deploy the vesting manager before withdrawing residual tokens.");
-      return;
-    }
-    if (!vestingWithdrawRawAmount || vestingWithdrawRawAmount <= 0n) {
-      setError("Enter a withdrawal amount using up to 6 decimals.");
-      return;
-    }
-
-    try {
-      setStatus("Encrypting withdrawal amount.");
-      const hash = await withdrawVestingAdmin.mutateAsync({
-        amount: vestingWithdrawRawAmount,
-        account: address,
-      });
-      setLatestVestingOpHash(hash);
-      queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-vesting"] });
-      setStatus(`Vesting withdrawal submitted: ${maskAddress(hash)}.`);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Vesting withdrawal failed");
+      setError(cause instanceof Error ? cause.message : "Cap update failed");
     }
   }
 
@@ -745,6 +838,10 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
       setError("Fix recipients and vesting rules before creating schedules.");
       return;
     }
+    if (!vestingManagerApproved) {
+      setError("Approve token spending by the vesting manager before opening schedules.");
+      return;
+    }
     if (vestingPaused) {
       setError("Unpause the vesting manager before creating schedules.");
       return;
@@ -756,6 +853,7 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
       return;
     }
 
+    const campaign = savedCampaign ?? (await persistCampaign(vestingManagerAddress));
     let done = createdVestingRecipientCount;
     setVestingProgress({ done, total: parsed.rows.length });
 
@@ -779,6 +877,7 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
       try {
         setStatus(`Creating vesting batch ${batchIndex + 1} of ${vestingGroups.length}.`);
         const hash = await batchCreateVesting.mutateAsync({ items, account: address });
+        await persistVestingSchedules(campaign, batchIndex, hash);
         setLatestVestingHash(hash);
         setCreatedVestingIndexes((current) => sortedUnique([...current, batchIndex]));
         setFailedVestingIndexes((current) => current.filter((index) => index !== batchIndex));
@@ -873,6 +972,86 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
       setStatus(campaignKind === "vesting" ? "Vesting inputs issued." : "Claim authorizations signed. Recipient portal is ready.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Claim issuing failed");
+    }
+  }
+
+  async function approveClaimFactoryOperator() {
+    setError(null);
+    if (!address) {
+      setError("Connect the admin wallet first.");
+      return;
+    }
+    if (!claimToken) {
+      setError("Set a valid token before approving the airdrop factory.");
+      return;
+    }
+    if (!publicClient || !walletClient.data) {
+      setError("Wallet client is not ready. Reconnect and try again.");
+      return;
+    }
+    if (!claimFactoryAddress) {
+      setError("Airdrop factory is not configured for this chain.");
+      return;
+    }
+
+    try {
+      setClaimApprovalPending(true);
+      setStatus("Approving airdrop factory as token operator.");
+      const hash = await setOperator({
+        publicClient,
+        walletClient: walletClient.data,
+        token: claimToken,
+        spender: claimFactoryAddress,
+        account: address,
+      });
+      await claimFactoryApproval.refetch();
+      queryClient.invalidateQueries({ queryKey: ["phase", "claim-factory-operator"] });
+      queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-airdrop"] });
+      setStatus(`Airdrop factory approval confirmed: ${maskAddress(hash)}.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Airdrop factory approval failed");
+    } finally {
+      setClaimApprovalPending(false);
+    }
+  }
+
+  async function approveVestingManagerOperator() {
+    setError(null);
+    if (!address) {
+      setError("Connect the admin wallet first.");
+      return;
+    }
+    if (!workflowToken) {
+      setError("Set a valid token before approving the vesting manager.");
+      return;
+    }
+    if (!vestingManagerAddress) {
+      setError("Deploy the vesting manager before approving token spending.");
+      return;
+    }
+    if (!publicClient || !walletClient.data) {
+      setError("Wallet client is not ready. Reconnect and try again.");
+      return;
+    }
+
+    try {
+      setVestingApprovalPending(true);
+      setStatus("Approving vesting manager as token operator.");
+      const hash = await setOperator({
+        publicClient,
+        walletClient: walletClient.data,
+        token: workflowToken,
+        spender: vestingManagerAddress,
+        account: address,
+      });
+      await vestingManagerApproval.refetch();
+      queryClient.invalidateQueries({ queryKey: ["phase", "vesting-manager-operator"] });
+      queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-vesting"] });
+      setStatus(`Vesting manager approved: ${maskAddress(hash)}.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Vesting manager approval failed");
+    } finally {
+      setVestingApprovalPending(false);
     }
   }
 
@@ -1061,6 +1240,15 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
     setStatus("Preflight refreshed.");
   }
 
+  function handleCampaignKindChange(nextKind: CampaignKind) {
+    setCampaignKind(nextKind);
+    if (nextKind === "vesting") {
+      const nextStart = nowUnix() + 900;
+      setStartDate(unixToDateInput(nextStart));
+      setEndDate(unixToDateInput(nextStart + 14 * 86400));
+    }
+  }
+
   return (
     <section className="admin-page">
       <div className="admin-hero admin-hero-clean">
@@ -1072,22 +1260,11 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
           <h1>Create private airdrops.</h1>
           <p>Select claimable, bulk, or vested airdrops. Import recipients. Launch.</p>
         </div>
-        <div className="admin-hero-status" aria-label="Launch modes">
-          <span>3 modes</span>
-          <strong>TokenOps SDK</strong>
-          <small>Claim, batch, vesting</small>
-        </div>
       </div>
 
       <div className="admin-layout admin-layout-single admin-console-layout">
         <div className="admin-primary">
           <section className="admin-panel admin-config-panel">
-            <PanelHeader
-              icon={<Layers3 size={19} aria-hidden="true" />}
-              label="Launch"
-              title="Private airdrop launcher"
-              copy="Open the builder, choose a mode, and run the matching TokenOps flow."
-            />
             <div className="admin-config-grid admin-campaign-grid">
               <button
                 className="admin-envelope-trigger field-wide"
@@ -1112,8 +1289,36 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
         <div className="admin-envelope-backdrop" role="presentation">
           <section className="admin-envelope-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-envelope-title">
             <div className="admin-envelope-header">
-              <div>
-                <span className="section-label">Launch</span>
+              <div className="admin-envelope-title-block">
+                <div className={launchStep === "mode" ? "admin-launch-journey" : "admin-launch-journey has-back"} aria-label="Setup progress">
+                  {launchStep !== "mode" ? (
+                    <button
+                      className="admin-launch-back"
+                      type="button"
+                      aria-label="Back to previous launch step"
+                      onClick={() => {
+                        if (launchStep === "details") setLaunchStep("mode");
+                        else if (launchStep === "recipients") setLaunchStep("details");
+                        else setLaunchStep("recipients");
+                      }}
+                    >
+                      <ArrowLeft size={13} aria-hidden="true" />
+                      <span>Back</span>
+                    </button>
+                  ) : null}
+                  <div className="admin-launch-progress">
+                    <div
+                      className="admin-launch-progress-track"
+                      role="progressbar"
+                      aria-label="Setup progress"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={launchProgressPercent}
+                    >
+                      <span style={{ width: `${launchProgressPercent}%` }} />
+                    </div>
+                  </div>
+                </div>
                 <h2 id="admin-envelope-title">{launchDialogTitle}</h2>
               </div>
               <button className="admin-envelope-close" type="button" aria-label="Close launch setup" onClick={() => setLaunchOpen(false)}>
@@ -1123,45 +1328,11 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
 
             <div className="admin-envelope-grid">
               <div className="admin-envelope-main">
-              {launchStep !== "mode" ? (
-                <div className="admin-launch-journey" aria-label="Launch journey">
-                  <div>
-                    <span className="section-label">Launch</span>
-                    <strong>{launchJourneyTitle}</strong>
-                  </div>
-                  <div className="admin-launch-journey-actions">
-                    <button
-                      className="button-secondary"
-                      type="button"
-                      onClick={() => {
-                        if (launchStep === "details") setLaunchStep("mode");
-                        else if (launchStep === "recipients") setLaunchStep("details");
-                        else setLaunchStep("recipients");
-                      }}
-                    >
-                      <ChevronLeft size={16} aria-hidden="true" />
-                      Back
-                    </button>
-                    <button
-                      className="button-secondary"
-                      type="button"
-                      disabled={!launchCanAdvance}
-                      onClick={() => {
-                        if (launchStep === "details" && launchDetailsReady) setLaunchStep("recipients");
-                        if (launchStep === "recipients" && recipientReady) setLaunchStep("flow");
-                      }}
-                    >
-                      Next
-                      <ChevronRight size={16} aria-hidden="true" />
-                    </button>
-                  </div>
-                </div>
-              ) : null}
                 {launchStep === "mode" ? (
                   <div className="admin-launch-step">
                     <div className="admin-mode-select">
                       <Field label="Mode">
-                        <select className="input" value={campaignKind} onChange={(event) => setCampaignKind(event.target.value as CampaignKind)}>
+                        <select className="input" value={campaignKind} onChange={(event) => handleCampaignKindChange(event.target.value as CampaignKind)}>
                           {campaignKinds.map((kind) => (
                             <option key={kind.id} value={kind.id}>
                               {kind.label}
@@ -1218,7 +1389,7 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
                           </span>
                         </div>
                       </div>
-                      {campaignKind === "batch" ? null : (
+                      {campaignKind === "claim" ? (
                         <>
                           <Field label="Start date">
                             <input className="input" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
@@ -1227,17 +1398,16 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
                             <input className="input" type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
                           </Field>
                         </>
+                      ) : null}
+                      {campaignKind === "vesting" ? null : (
+                        <div className="admin-launch-summary field-wide">
+                          <span>{selectedKind.label}</span>
+                          <strong>{modeSummary}</strong>
+                          {campaignKind === "claim" ? <small>{launchTimelineLabel}</small> : null}
+                        </div>
                       )}
-                      <div className="admin-launch-summary field-wide">
-                        <span>{selectedKind.label}</span>
-                        <strong>{modeSummary}</strong>
-                        <small>{launchTimelineLabel}</small>
-                      </div>
                     </div>
                     <div className="admin-action-grid admin-envelope-actions admin-launch-actions">
-                      <button className="button-secondary" type="button" onClick={() => setLaunchStep("mode")}>
-                        Change Mode
-                      </button>
                       <button className="button-primary" type="button" disabled={!launchDetailsReady} onClick={() => setLaunchStep("recipients")}>
                         <Play size={16} aria-hidden="true" />
                         Continue
@@ -1297,9 +1467,6 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
                       ) : null}
                     </div>
                     <div className="admin-action-grid admin-envelope-actions admin-launch-actions">
-                      <button className="button-secondary" type="button" onClick={() => setLaunchStep("details")}>
-                        Back
-                      </button>
                       <button className="button-primary" type="button" disabled={!recipientReady} onClick={() => setLaunchStep("flow")}>
                         <Play size={16} aria-hidden="true" />
                         Continue
@@ -1314,9 +1481,6 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
                           <span className={batchPreflightReady ? "pill pill-live" : "pill pill-watch"}>{batchPreflightState}</span>
                           <h3 id="admin-disperse-title">Preflight</h3>
                         </div>
-                        <button className="button-secondary admin-mode-back" type="button" onClick={() => setLaunchStep("mode")}>
-                          Change Mode
-                        </button>
                       </div>
 
                       <div className="admin-disperse-setup">
@@ -1443,21 +1607,39 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
                 ) : campaignKind === "claim" ? (
                   <>
                     <div className="admin-action-grid admin-envelope-actions admin-claim-actions">
-                      <button className="button-secondary" type="button" disabled={busy} onClick={saveDraft}>
-                        <Save size={16} aria-hidden="true" />
-                        Save
-                      </button>
-                      {showClaimCreateActions ? (
-                        <>
-                          <button className="button-primary" type="button" disabled={!canCreateAndFundClaim || busy} onClick={() => deployCampaign("fund")}>
-                            <ShieldCheck size={16} aria-hidden="true" />
-                            Create + Fund Airdrop
-                          </button>
-                          <button className="button-secondary" type="button" disabled={!canDeploy || busy || !claimFeeReady} onClick={() => deployCampaign("deploy")}>
-                            <Rocket size={16} aria-hidden="true" />
-                            Create Airdrop Only
-                          </button>
-                        </>
+                      {showClaimApprovalAction ? (
+                        <button className="button-primary" type="button" disabled={busy || !canApproveClaimFactory} onClick={approveClaimFactoryOperator}>
+                          <ShieldCheck size={16} aria-hidden="true" />
+                          Approve Factory
+                        </button>
+                      ) : null}
+                      {showClaimCreateChoice ? (
+                        <div className="admin-claim-create-choice field-wide">
+                          <div className="segmented-control admin-claim-create-toggle" aria-label="Airdrop creation mode">
+                            <button
+                              className={claimCreateMode === "fund" ? "is-active" : ""}
+                              type="button"
+                              aria-pressed={claimCreateMode === "fund"}
+                              onClick={() => setClaimCreateMode("fund")}
+                            >
+                              Create + fund
+                            </button>
+                            <button
+                              className={claimCreateMode === "deploy" ? "is-active" : ""}
+                              type="button"
+                              aria-pressed={claimCreateMode === "deploy"}
+                              onClick={() => setClaimCreateMode("deploy")}
+                            >
+                              Create only
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                      {showClaimCreateChoice ? (
+                        <button className="button-primary" type="button" disabled={selectedClaimCreateDisabled} onClick={() => deployCampaign(claimCreateMode)}>
+                          {claimCreateMode === "fund" ? <ShieldCheck size={16} aria-hidden="true" /> : <Rocket size={16} aria-hidden="true" />}
+                          {selectedClaimCreateLabel}
+                        </button>
                       ) : null}
                       {showClaimFundAction ? (
                         <button className="button-primary" type="button" disabled={busy || !canFundClaimPot} onClick={fundCampaignPot}>
@@ -1477,12 +1659,16 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
                           Open Claim Portal
                         </a>
                       ) : null}
+                      <button className="button-secondary" type="button" disabled={busy} onClick={saveDraft}>
+                        <Save size={16} aria-hidden="true" />
+                        Save
+                      </button>
                     </div>
                     <StatusMessage status={status} error={error ?? factoryDefaultGasFee.error?.message ?? factoryCustomFee.error?.message ?? fundAirdrop.error?.message ?? null} />
-                    {showClaimFundResumeHint ? (
+                    {showClaimApprovalAction ? (
                       <div className="validation-message">
                         <AlertTriangle size={16} aria-hidden="true" />
-                        <span>Funding can only continue in the same create session. Use Create + Fund Airdrop for new launches.</span>
+                        <span>{claimApprovalLabel}. Approve token spending by the factory contract before creating or funding the airdrop.</span>
                       </div>
                     ) : null}
                     {issueProgress.total > 0 ? (
@@ -1509,175 +1695,165 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
                   </>
                 ) : (
                   <>
-                    <div className="admin-envelope-modebar">
-                      <span className="pill pill-live">Vesting</span>
-                      <strong>Vesting mode</strong>
-                      <small>{modeProgressLabel}</small>
-                      <button className="button-secondary admin-mode-back" type="button" onClick={() => setLaunchStep("mode")}>
-                        Change Mode
-                      </button>
-                    </div>
-
-                    <div className="admin-flow-rail" aria-label="Vesting flow">
-                      {vestingFlowSteps.map((step, index) => (
-                        <div className={flowStepClass(step)} key={step.label}>
-                          <span>{index + 1}</span>
-                          <div>
-                            <strong>{step.label}</strong>
-                            <small>{step.value}</small>
+                    <div className="admin-vesting-stack">
+                      <section className="admin-vesting-hero" aria-label="Vesting launch summary">
+                        <div className="admin-vesting-hero-copy">
+                          <span className={vestingComplete ? "pill pill-live" : vestingScheduleReady ? "pill pill-sealed" : "pill pill-watch"}>{vestingStateLabel}</span>
+                          <h3>{vestingHeadline}</h3>
+                          <p>{vestingGuidance}</p>
+                        </div>
+                        <div className="admin-vesting-progress-card">
+                          <span>Schedules</span>
+                          <strong>
+                            {createdVestingRecipientCount.toLocaleString()} / {vestingRecipientTotal.toLocaleString()}
+                          </strong>
+                          <div className="progress-track" aria-hidden="true">
+                            <span style={{ width: vestingCompletionPercent.toString() + "%" }} />
                           </div>
                         </div>
-                      ))}
-                    </div>
-
-                    <div className="admin-batch-grid">
-                      <section className="admin-batch-card">
-                        <BatchCardHeader icon={<Database size={18} aria-hidden="true" />} title="Recipients" value={`${parsed.rows.length.toLocaleString()} wallets`} />
-                        <div className="admin-batch-stat-grid">
-                          <Metric label="Allocation" value={formatTokenUnits(totalAmount) + " cUSDC"} sealed />
-                          <Metric label="Schedule batches" value={vestingGroups.length.toLocaleString()} />
-                          <Metric label="Invalid rows" value={parsed.errors.length.toLocaleString()} />
-                        </div>
                       </section>
 
-                      <section className="admin-batch-card">
-                        <BatchCardHeader icon={<CalendarDays size={18} aria-hidden="true" />} title="Open vestings" value={releaseIntervalLabel(releaseCadence, vestingReleaseIntervalSecs)} />
-                        <div className="admin-batch-control-grid">
-                          <Field label="Cadence">
-                            <select className="input" value={releaseCadence} onChange={(event) => setReleaseCadence(event.target.value as ReleaseCadence)}>
-                              {releaseCadences.map((cadence) => (
-                                <option key={cadence.id} value={cadence.id}>
-                                  {cadence.label}
-                                </option>
-                              ))}
-                            </select>
-                          </Field>
-                          <Field label="Start date">
-                            <input className="input" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
-                          </Field>
-                          <Field label="End date">
-                            <input className="input" type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
-                          </Field>
-                          <Field label="Cliff">
-                            <select className="input" value={vestingCliff} onChange={(event) => setVestingCliff(event.target.value as VestingCliff)}>
-                              {vestingCliffOptions.map((option) => (
-                                <option key={option.id} value={option.id}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                          </Field>
-                          <Field label="Timelock">
-                            <select className="input" value={vestingTimelock} onChange={(event) => setVestingTimelock(event.target.value as VestingTimelock)}>
-                              {vestingTimelockOptions.map((option) => (
-                                <option key={option.id} value={option.id}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                          </Field>
-                          <Field label="Batch size">
-                            <input className="input" type="number" min="1" step="1" value={vestingBatchSize} onChange={(event) => setVestingBatchSize(event.target.value)} />
-                          </Field>
-                        </div>
-                      </section>
+                      <div className="admin-vesting-facts">
+                        <Metric label="Recipients" value={`${vestingRecipientTotal.toLocaleString()} wallets`} />
+                        <Metric label="Allocation" value={formatTokenUnits(totalAmount) + " cUSDC"} sealed />
+                        <Metric label="Batching" value={vestingBatchLabel} />
+                      </div>
 
-                      <section className="admin-batch-card">
-                        <BatchCardHeader icon={<ShieldCheck size={18} aria-hidden="true" />} title="Manager policy" value={vestingRevocable ? "revocable" : "locked"} />
-                        <div className="admin-batch-control-grid">
-                          <Field label="Start unlock">
-                            <select className="input" value={vestingInitialUnlock} onChange={(event) => setVestingInitialUnlock(event.target.value as VestingUnlock)}>
-                              {vestingInitialUnlockOptions.map((option) => (
-                                <option key={option.id} value={option.id}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                          </Field>
-                          <Field label="Cliff unlock">
-                            <select className="input" value={vestingCliffUnlock} onChange={(event) => setVestingCliffUnlock(event.target.value as VestingCliffUnlock)}>
-                              {vestingCliffUnlockOptions.map((option) => (
-                                <option key={option.id} value={option.id}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                          </Field>
-                          <Field label="Revocation">
-                            <select className="input" value={vestingRevocable ? "on" : "off"} onChange={(event) => setVestingRevocable(event.target.value === "on")}>
-                              <option value="on">Enabled</option>
-                              <option value="off">Off</option>
-                            </select>
-                          </Field>
-                          <Field label="Splits">
-                            <select className="input" value={vestingSplitEnabled ? "on" : "off"} onChange={(event) => setVestingSplitEnabled(event.target.value === "on")}>
-                              <option value="on">Enabled</option>
-                              <option value="off">Off</option>
-                            </select>
-                          </Field>
-                          <Field label="Pause control">
-                            <select className="input" value={vestingPausable ? "on" : "off"} onChange={(event) => setVestingPausable(event.target.value === "on")}>
-                              <option value="on">Enabled</option>
-                              <option value="off">Off</option>
-                            </select>
-                          </Field>
-                        </div>
-                      </section>
+                      {!vestingComplete ? (
+                        <div className="admin-vesting-layout">
+                          <section className="admin-vesting-card admin-vesting-card-wide">
+                            <div className="admin-vesting-card-header">
+                              <span className="admin-setting-icon">
+                                <CalendarDays size={18} aria-hidden="true" />
+                              </span>
+                              <div>
+                                <h3>Schedule</h3>
+                                <p>{vestingCadenceLabel}</p>
+                              </div>
+                            </div>
+                            <div className="admin-vesting-form-grid">
+                              <Field label="Cadence">
+                                <select className="input" value={releaseCadence} onChange={(event) => setReleaseCadence(event.target.value as ReleaseCadence)}>
+                                  {releaseCadences.map((cadence) => (
+                                    <option key={cadence.id} value={cadence.id}>
+                                      {cadence.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </Field>
+                              <Field label="Start">
+                                <input className="input" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+                              </Field>
+                              <Field label="End">
+                                <input className="input" type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+                              </Field>
+                              <Field label="Cliff">
+                                <select className="input" value={vestingCliff} onChange={(event) => setVestingCliff(event.target.value as VestingCliff)}>
+                                  {vestingCliffOptions.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </Field>
+                              <Field label="Timelock">
+                                <select className="input" value={vestingTimelock} onChange={(event) => setVestingTimelock(event.target.value as VestingTimelock)}>
+                                  {vestingTimelockOptions.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </Field>
+                              <Field label="Batch size">
+                                <input className="input" type="number" min="1" step="1" value={vestingBatchSize} onChange={(event) => setVestingBatchSize(event.target.value)} />
+                              </Field>
+                            </div>
+                          </section>
 
-                      <section className="admin-batch-card">
-                        <BatchCardHeader icon={<KeyRound size={18} aria-hidden="true" />} title="Manager" value={vestingManagerAddress ? maskAddress(vestingManagerAddress) : "pending"} />
-                        <div className="admin-signal-list">
-                          <LaunchSignal label="Manager" value={vestingManagerAddress ? "deployed" : "pending"} good={Boolean(vestingManagerAddress)} />
-                          <LaunchSignal label="State" value={vestingPaused ? "paused" : "active"} good={!vestingPaused} />
-                          <LaunchSignal label="Cliff" value={vestingCliffWindowValid ? optionLabel(vestingCliffOptions, vestingCliff) : "too long"} good={vestingCliffWindowValid} />
-                          <LaunchSignal label="Unlocks" value={vestingBpsValid ? `${bpsLabel(vestingInitialUnlockBps + vestingCliffAmountBps)} total` : "over 100%"} good={vestingBpsValid} />
-                          <LaunchSignal label="Plaintext exposure" value="0" good />
-                        </div>
-                      </section>
+                          <section className="admin-vesting-card">
+                            <div className="admin-vesting-card-header">
+                              <span className="admin-setting-icon">
+                                <ShieldCheck size={18} aria-hidden="true" />
+                              </span>
+                              <div>
+                                <h3>Rules</h3>
+                                <p>
+                                  {vestingUnlockTotalLabel} upfront - {vestingPolicyLabel}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="admin-vesting-form-grid admin-vesting-policy-grid">
+                              <Field label="Start unlock">
+                                <select className="input" value={vestingInitialUnlock} onChange={(event) => setVestingInitialUnlock(event.target.value as VestingUnlock)}>
+                                  {vestingInitialUnlockOptions.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </Field>
+                              <Field label="Cliff unlock">
+                                <select className="input" value={vestingCliffUnlock} onChange={(event) => setVestingCliffUnlock(event.target.value as VestingCliffUnlock)}>
+                                  {vestingCliffUnlockOptions.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </Field>
+                              <SettingToggle label="Revocable" checked={vestingRevocable} onChange={setVestingRevocable} onLabel="Yes" offLabel="No" />
+                              <SettingToggle label="Splits" checked={vestingSplitEnabled} onChange={setVestingSplitEnabled} />
+                              <SettingToggle label="Pause" checked={vestingPausable} onChange={setVestingPausable} />
+                            </div>
+                          </section>
 
-                      <section className="admin-batch-card">
-                        <BatchCardHeader icon={<Wallet size={18} aria-hidden="true" />} title="Schedule creation" value={vestingScheduleReady ? "ready" : "blocked"} />
-                        <div className="admin-signal-list">
-                          <LaunchSignal label="Token" value={tokenValid ? "set" : "missing"} good={tokenValid} />
-                          <LaunchSignal label="Window" value={dateValid ? `${launchWindowDays} days` : "invalid"} good={dateValid} />
-                          <LaunchSignal label="Encrypted schedules" value={`${createdVestingRecipientCount.toLocaleString()} created`} good={createdVestingRecipientCount > 0} />
-                          <LaunchSignal label="Failed batches" value={failedVestingSet.size.toLocaleString()} good={failedVestingSet.size === 0} />
-                          <LaunchSignal label="Latest proof" value={latestVestingHash ? maskAddress(latestVestingHash) : "none yet"} good={Boolean(latestVestingHash)} />
+                          {vestingOpsReady ? (
+                            <section className="admin-vesting-card">
+                              <div className="admin-vesting-card-header">
+                                <span className="admin-setting-icon">
+                                  <KeyRound size={18} aria-hidden="true" />
+                                </span>
+                                <div>
+                                  <h3>Manager</h3>
+                                  <p>{vestingPaused ? "Paused" : "Active"} - {vestingManagerAddress ? maskAddress(vestingManagerAddress) : ""}</p>
+                                </div>
+                              </div>
+                              <div className="admin-vesting-manager-grid">
+                                <Metric label="Approval" value={vestingManagerApproved ? "Approved" : "Needed"} />
+                                <Metric label="Created" value={createdVestingRecipientCount.toLocaleString()} />
+                                <Metric label="Failed" value={failedVestingSet.size.toLocaleString()} />
+                                <Metric label="Proof" value={latestVestingHash ? maskAddress(latestVestingHash) : "None"} />
+                                <Metric label="Last op" value={latestVestingOpHash ? maskAddress(latestVestingOpHash) : "None"} />
+                              </div>
+                            </section>
+                          ) : null}
                         </div>
-                      </section>
-
-                      <section className="admin-batch-card">
-                        <BatchCardHeader icon={<PauseCircle size={18} aria-hidden="true" />} title="Manager ops" value={latestVestingOpHash ? maskAddress(latestVestingOpHash) : "no ops yet"} />
-                        <div className="admin-batch-control-grid">
-                          <Field label="Withdraw amount">
-                            <input
-                              className="input"
-                              inputMode="decimal"
-                              placeholder="0.00"
-                              value={vestingWithdrawAmount}
-                              onChange={(event) => setVestingWithdrawAmount(event.target.value)}
-                            />
-                          </Field>
-                          <Field label="Batch cap">
-                            <input className="input" type="number" min="1" step="1" value={vestingBatchSize} onChange={(event) => setVestingBatchSize(event.target.value)} />
-                          </Field>
-                        </div>
-                        <div className="admin-signal-list">
-                          <LaunchSignal label="Pause control" value={vestingPausable ? "enabled" : "off"} good={vestingPausable} />
-                          <LaunchSignal label="Withdraw input" value={vestingWithdrawRawAmount ? `${formatTokenUnits(vestingWithdrawRawAmount)} cUSDC` : "empty"} good={Boolean(vestingWithdrawRawAmount)} />
-                        </div>
-                      </section>
+                      ) : null}
                     </div>
 
                     <div className="admin-action-grid admin-envelope-actions admin-batch-actions">
-                      <button className="button-secondary" type="button" disabled={busy} onClick={saveDraft}>
-                        <Save size={16} aria-hidden="true" />
-                        Save
-                      </button>
+                      {vestingRecipientHref ? (
+                        <Link className="button-primary" href={vestingRecipientHref}>
+                          Recipient View
+                        </Link>
+                      ) : null}
+                      {vestingShowSaveAction ? (
+                        <button className="button-secondary" type="button" disabled={busy} onClick={saveDraft}>
+                          <Save size={16} aria-hidden="true" />
+                          Save
+                        </button>
+                      ) : null}
                       {vestingCanDeploy ? (
                         <button className="button-primary" type="button" disabled={!vestingCanDeploy || busy} onClick={deployVestingManager}>
                           <Rocket size={16} aria-hidden="true" />
                           Deploy Manager
+                        </button>
+                      ) : null}
+                      {vestingManagerAddress && !vestingManagerApproved ? (
+                        <button className="button-primary" type="button" disabled={busy || !canApproveVestingManager} onClick={approveVestingManagerOperator}>
+                          <ShieldCheck size={16} aria-hidden="true" />
+                          Approve Manager
                         </button>
                       ) : null}
                       {vestingShowUnpauseAction ? (
@@ -1707,23 +1883,23 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
                       {vestingShowPauseAction ? (
                         <button className="button-secondary" type="button" disabled={busy || !vestingShowPauseAction} onClick={() => setVestingPauseState(true)}>
                           <PauseCircle size={16} aria-hidden="true" />
-                          Pause Manager
+                          Pause
                         </button>
                       ) : null}
-                      {vestingShowManagerOps ? (
+                      {vestingShowBatchCapAction ? (
                         <button className="button-secondary" type="button" disabled={busy || !vestingOpsReady} onClick={setVestingBatchCap}>
                           <Layers3 size={16} aria-hidden="true" />
-                          Set Batch Cap
-                        </button>
-                      ) : null}
-                      {vestingShowManagerOps && vestingWithdrawRawAmount ? (
-                        <button className="button-secondary" type="button" disabled={busy || !vestingOpsReady || !vestingWithdrawRawAmount} onClick={withdrawVestingResidual}>
-                          <Download size={16} aria-hidden="true" />
-                          Withdraw Residual
+                          Set Cap
                         </button>
                       ) : null}
                     </div>
-                    <StatusMessage status={status} error={error ?? createVestingManager.error?.message ?? batchCreateVesting.error?.message ?? pauseVesting.error?.message ?? unpauseVesting.error?.message ?? setMaxVestingBatchSize.error?.message ?? withdrawVestingAdmin.error?.message ?? null} />
+                    <StatusMessage status={status} error={error ?? createVestingManager.error?.message ?? batchCreateVesting.error?.message ?? pauseVesting.error?.message ?? unpauseVesting.error?.message ?? setMaxVestingBatchSize.error?.message ?? null} />
+                    {vestingManagerAddress && !vestingManagerApproved ? (
+                      <div className="validation-message">
+                        <AlertTriangle size={16} aria-hidden="true" />
+                        <span>{vestingApprovalLabel}. Approve token spending by the manager contract before opening schedules.</span>
+                      </div>
+                    ) : null}
                     {vestingProgress.total > 0 ? (
                       <div className="progress-block">
                         <div>
@@ -1768,19 +1944,6 @@ export default function AdminBuilder({ initialCampaigns }: { initialCampaigns: C
   );
 }
 
-function PanelHeader({ icon, label, title, copy }: { icon: React.ReactNode; label: string; title: string; copy: string }) {
-  return (
-    <div className="admin-panel-header">
-      <span className="admin-panel-icon">{icon}</span>
-      <div>
-        <span className="section-label">{label}</span>
-        <h2>{title}</h2>
-        <p>{copy}</p>
-      </div>
-    </div>
-  );
-}
-
 function Field({ label, children, className = "" }: { label: string; children: React.ReactNode; className?: string }) {
   return (
     <label className={"admin-field " + className}>
@@ -1790,14 +1953,29 @@ function Field({ label, children, className = "" }: { label: string; children: R
   );
 }
 
-
-function BatchCardHeader({ icon, title, value }: { icon: React.ReactNode; title: string; value: string }) {
+function SettingToggle({
+  label,
+  checked,
+  onChange,
+  onLabel = "On",
+  offLabel = "Off",
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  onLabel?: string;
+  offLabel?: string;
+}) {
   return (
-    <div className="admin-batch-card-header">
-      <span className="admin-setting-icon">{icon}</span>
-      <div>
-        <h3>{title}</h3>
-        <strong>{value}</strong>
+    <div className="admin-setting-toggle">
+      <span>{label}</span>
+      <div className="segmented-control admin-compact-toggle" aria-label={label}>
+        <button className={checked ? "is-active" : ""} type="button" aria-pressed={checked} onClick={() => onChange(true)}>
+          {onLabel}
+        </button>
+        <button className={!checked ? "is-active" : ""} type="button" aria-pressed={!checked} onClick={() => onChange(false)}>
+          {offLabel}
+        </button>
       </div>
     </div>
   );
@@ -1810,12 +1988,6 @@ function LaunchSignal({ label, value, good }: { label: string; value: string; go
       <strong>{value}</strong>
     </div>
   );
-}
-
-function flowStepClass(step: { ready?: boolean; available?: boolean }): string {
-  if (step.ready) return "admin-flow-step is-ready";
-  if (step.available) return "admin-flow-step is-actionable";
-  return "admin-flow-step";
 }
 
 function StatusMessage({ status, error }: { status: string; error: string | null }) {
@@ -1836,16 +2008,18 @@ function Metric({ label, value, sealed }: { label: string; value: string; sealed
   );
 }
 
+function formatClaimFundingError(cause: unknown, fallback: string): string {
+  const message = cause instanceof Error ? cause.message : fallback;
+  if (message.includes("0x79f2cb38") || message.includes("ERC7984UnauthorizedSpender")) {
+    return "Approve factory operator before funding. ERC-7984 requires setOperator.";
+  }
+  return message;
+}
+
 function parseBatchSize(value: string): number {
   const parsed = Number.parseInt(value, 10);
   if (!Number.isFinite(parsed)) return 250;
   return Math.min(5000, Math.max(1, parsed));
-}
-
-function parseTokenUnitsInput(value: string): bigint | null {
-  const trimmed = value.trim();
-  if (!/^\d+(\.\d{1,6})?$/.test(trimmed)) return null;
-  return parseUnits(trimmed, 6);
 }
 
 function chunkRows(rows: RecipientCsvRow[], size: number): RecipientCsvRow[][] {
@@ -1872,10 +2046,6 @@ function optionSeconds(options: Array<{ id: string; seconds: number }>, id: stri
 
 function optionBps(options: Array<{ id: string; bps: number }>, id: string): number {
   return options.find((option) => option.id === id)?.bps ?? 0;
-}
-
-function optionLabel(options: Array<{ id: string; label: string }>, id: string): string {
-  return options.find((option) => option.id === id)?.label ?? "None";
 }
 
 function releaseIntervalSeconds(cadence: ReleaseCadence, startTimestamp: number, endTimestamp: number): number {

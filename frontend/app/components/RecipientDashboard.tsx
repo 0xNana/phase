@@ -1,22 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, CheckCircle2, Clock3, FileLock2, Search, ShieldCheck, XCircle } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ArrowRight, CalendarClock, CheckCircle2, Clock3, FileLock2, ShieldCheck, WalletCards } from "lucide-react";
 import { useAccount } from "wagmi";
 import { maskAddress } from "@/lib/format";
 import type { Campaign } from "@/lib/types";
 
 type ClaimCheck = {
+  status: "checking" | "ready" | "claimed" | "missing" | "error";
+  message: string;
+};
+type VestingCheck = {
   status: "checking" | "ready" | "missing" | "error";
   message: string;
 };
 
 export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[] }) {
   const { address } = useAccount();
-  const [query, setQuery] = useState("");
   const [claimChecks, setClaimChecks] = useState<Record<string, ClaimCheck>>({});
+  const [vestingChecks, setVestingChecks] = useState<Record<string, VestingCheck>>({});
   const claimCampaigns = useMemo(() => campaigns.filter(isClaimCampaign), [campaigns]);
+  const vestingCampaigns = useMemo(() => campaigns.filter(isVestingCampaign), [campaigns]);
 
   useEffect(() => {
     if (!address || claimCampaigns.length === 0) {
@@ -34,17 +39,24 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
     async function checkClaims() {
       const results = await Promise.all(
         claimCampaigns.map(async (campaign): Promise<[string, ClaimCheck]> => {
+          if (!campaign.airdropAddress || campaign.status !== "live") {
+            return [campaign.id, { status: "missing", message: "Not live" }];
+          }
+
           try {
             const response = await fetch(`/api/campaigns/${campaign.id}/claim?recipient=${address}`, {
               cache: "no-store",
               signal: controller.signal,
             });
-            if (response.ok) return [campaign.id, { status: "ready", message: "Claim payload ready" }];
-            if (response.status === 404) return [campaign.id, { status: "missing", message: "No payload for this wallet" }];
-            return [campaign.id, { status: "error", message: "Could not check payload" }];
+            if (response.ok) {
+              const result = (await response.json().catch(() => null)) as { claim?: { claimedAt?: string } } | null;
+              return [campaign.id, result?.claim?.claimedAt ? { status: "claimed", message: "Claimed" } : { status: "ready", message: "Ready" }];
+            }
+            if (response.status === 404) return [campaign.id, { status: "missing", message: "No claim" }];
+            return [campaign.id, { status: "error", message: "Check failed" }];
           } catch (cause) {
             if (controller.signal.aborted) return [campaign.id, { status: "checking", message: "Checking wallet" }];
-            return [campaign.id, { status: "error", message: cause instanceof Error ? cause.message : "Could not check payload" }];
+            return [campaign.id, { status: "error", message: cause instanceof Error ? cause.message : "Check failed" }];
           }
         }),
       );
@@ -58,148 +70,245 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
     return () => controller.abort();
   }, [address, claimCampaigns]);
 
-  const filteredCampaigns = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return claimCampaigns;
-    return claimCampaigns.filter((campaign) => {
-      return [campaign.name, campaign.id, campaign.status, campaign.tokenAddress, campaign.airdropAddress ?? ""].some((value) =>
-        value.toLowerCase().includes(needle),
-      );
-    });
-  }, [claimCampaigns, query]);
+  useEffect(() => {
+    if (!address || vestingCampaigns.length === 0) {
+      setVestingChecks({});
+      return;
+    }
 
-  const readyCount = Object.values(claimChecks).filter((check) => check.status === "ready").length;
-  const liveCampaigns = claimCampaigns.filter((campaign) => campaign.status === "live").length;
+    const controller = new AbortController();
+    setVestingChecks(
+      Object.fromEntries(
+        vestingCampaigns.map((campaign) => [campaign.id, { status: "checking", message: "Checking wallet" } satisfies VestingCheck]),
+      ),
+    );
+
+    async function checkVestings() {
+      const results = await Promise.all(
+        vestingCampaigns.map(async (campaign): Promise<[string, VestingCheck]> => {
+          if (!campaign.airdropAddress || campaign.status !== "live") {
+            return [campaign.id, { status: "missing", message: "Not live" }];
+          }
+
+          try {
+            const response = await fetch(`/api/campaigns/${campaign.id}/vestings?recipient=${address}`, {
+              cache: "no-store",
+              signal: controller.signal,
+            });
+            if (response.ok) {
+              const result = (await response.json().catch(() => null)) as { vestings?: unknown[] } | null;
+              return [
+                campaign.id,
+                result?.vestings && result.vestings.length > 0
+                  ? { status: "ready", message: `${result.vestings.length} schedule${result.vestings.length === 1 ? "" : "s"}` }
+                  : { status: "missing", message: "No schedule" },
+              ];
+            }
+            return [campaign.id, { status: "error", message: "Check failed" }];
+          } catch (cause) {
+            if (controller.signal.aborted) return [campaign.id, { status: "checking", message: "Checking wallet" }];
+            return [campaign.id, { status: "error", message: cause instanceof Error ? cause.message : "Check failed" }];
+          }
+        }),
+      );
+
+      if (!controller.signal.aborted) {
+        setVestingChecks(Object.fromEntries(results));
+      }
+    }
+
+    checkVestings();
+    return () => controller.abort();
+  }, [address, vestingCampaigns]);
+
+  const readyCampaigns = useMemo(
+    () => claimCampaigns.filter((campaign) => claimChecks[campaign.id]?.status === "ready"),
+    [claimCampaigns, claimChecks],
+  );
+  const claimedCampaigns = useMemo(
+    () => claimCampaigns.filter((campaign) => claimChecks[campaign.id]?.status === "claimed"),
+    [claimCampaigns, claimChecks],
+  );
+  const readyVestingCampaigns = useMemo(
+    () => vestingCampaigns.filter((campaign) => vestingChecks[campaign.id]?.status === "ready"),
+    [vestingCampaigns, vestingChecks],
+  );
+  const checking =
+    Boolean(address) &&
+    (claimCampaigns.some((campaign) => claimChecks[campaign.id]?.status === "checking") ||
+      vestingCampaigns.some((campaign) => vestingChecks[campaign.id]?.status === "checking"));
+  const primaryCampaign = readyCampaigns[0] ?? claimCampaigns[0] ?? null;
+  const primaryCheck = primaryCampaign ? claimChecks[primaryCampaign.id] : undefined;
+  const primaryVestingCampaign = readyVestingCampaigns[0] ?? vestingCampaigns[0] ?? null;
+  const primaryVestingCheck = primaryVestingCampaign ? vestingChecks[primaryVestingCampaign.id] : undefined;
+  const dashboardState = getDashboardState({
+    connected: Boolean(address),
+    campaignCount: claimCampaigns.length + vestingCampaigns.length,
+    readyClaimCount: readyCampaigns.length,
+    readyVestingCount: readyVestingCampaigns.length,
+    claimedCount: claimedCampaigns.length,
+    checking,
+    hasError:
+      Object.values(claimChecks).some((check) => check.status === "error") ||
+      Object.values(vestingChecks).some((check) => check.status === "error"),
+  });
+  const hasReadyClaim = Boolean(primaryCampaign && primaryCheck?.status === "ready");
+  const hasReadyVesting = Boolean(primaryVestingCampaign && primaryVestingCheck?.status === "ready");
 
   return (
-    <section className="recipient-page" aria-labelledby="recipient-title">
-      <div className="recipient-hero">
-        <div>
+    <section className="recipient-page recipient-page-clean" aria-labelledby="recipient-title">
+      <div className="recipient-start panel">
+        <div className="recipient-start-copy">
           <span className="product-kicker">
             <FileLock2 size={16} aria-hidden="true" />
             Recipient
           </span>
-          <h1 id="recipient-title">Open your private airdrop claim.</h1>
-          <p>Connect the assigned wallet, find the matching airdrop campaign, and reveal only your allocation.</p>
+          <h1 id="recipient-title">{dashboardState.title}</h1>
+          <p>{dashboardState.copy}</p>
         </div>
-        <aside className="recipient-wallet-panel" aria-label="Recipient wallet status">
-          <span className={address ? "pill pill-live" : "pill pill-watch"}>{address ? "connected" : "wallet needed"}</span>
-          <strong>{address ? maskAddress(address) : "No wallet connected"}</strong>
-          <small>{address ? `${readyCount.toLocaleString()} ready claim${readyCount === 1 ? "" : "s"}` : "Connect to match payloads"}</small>
-        </aside>
+
+        <div className="recipient-flow-card" aria-label="Claim flow">
+          <RecipientStep
+            icon={<WalletCards size={18} aria-hidden="true" />}
+            label="Wallet"
+            value={address ? maskAddress(address) : "Connect"}
+            state={address ? "done" : "active"}
+          />
+          <RecipientStep
+            icon={checking ? <Clock3 size={18} aria-hidden="true" /> : readyCampaigns.length > 0 || readyVestingCampaigns.length > 0 || claimedCampaigns.length > 0 ? <CheckCircle2 size={18} aria-hidden="true" /> : <ShieldCheck size={18} aria-hidden="true" />}
+            label="Wallet check"
+            value={
+              !address
+                ? "Waiting"
+                : checking
+                  ? "Checking"
+                  : readyCampaigns.length > 0
+                    ? "Claim ready"
+                    : readyVestingCampaigns.length > 0
+                      ? "Vesting ready"
+                      : claimedCampaigns.length > 0
+                        ? "Claimed"
+                        : "No match"
+            }
+            state={!address ? "idle" : readyCampaigns.length > 0 || readyVestingCampaigns.length > 0 || claimedCampaigns.length > 0 ? "done" : checking ? "active" : "idle"}
+          />
+          <RecipientStep
+            icon={readyCampaigns.length > 0 || readyVestingCampaigns.length > 0 ? <ArrowRight size={18} aria-hidden="true" /> : claimedCampaigns.length > 0 ? <CheckCircle2 size={18} aria-hidden="true" /> : <Clock3 size={18} aria-hidden="true" />}
+            label="Open"
+            value={readyCampaigns.length > 0 ? "Claim" : readyVestingCampaigns.length > 0 ? "Vesting" : claimedCampaigns.length > 0 ? "Done" : "Locked"}
+            state={readyCampaigns.length > 0 || readyVestingCampaigns.length > 0 ? "active" : claimedCampaigns.length > 0 ? "done" : "idle"}
+          />
+
+          {hasReadyClaim && primaryCampaign ? (
+            <Link className="button-primary recipient-primary-action" href={`/claim/${primaryCampaign.id}`}>
+              Claim now <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          ) : hasReadyVesting && primaryVestingCampaign ? (
+            <Link className="button-primary recipient-primary-action" href={`/vesting/${primaryVestingCampaign.id}`}>
+              Open vesting <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          ) : (
+            <button className="button-secondary recipient-primary-action" type="button" disabled>
+              {address ? (checking ? "Checking" : claimedCampaigns.length > 0 ? "Already claimed" : "No match found") : "Connect wallet"}
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="recipient-toolbar panel">
-        <div className="recipient-search">
-          <Search size={17} aria-hidden="true" />
-          <input className="input" placeholder="Search airdrop campaigns" value={query} onChange={(event) => setQuery(event.target.value)} />
-        </div>
-        <div className="recipient-toolbar-stats" aria-label="Recipient campaign stats">
-          <RecipientStat label="Campaigns" value={claimCampaigns.length.toLocaleString()} />
-          <RecipientStat label="Live" value={liveCampaigns.toLocaleString()} />
-          <RecipientStat label="Ready" value={address ? readyCount.toLocaleString() : "-"} />
-        </div>
-      </div>
-
-      {claimCampaigns.length === 0 ? null : filteredCampaigns.length === 0 ? (
-        <section className="recipient-empty panel">
-          <Search size={22} aria-hidden="true" />
-          <h2>No matching campaigns.</h2>
-          <p>Clear the search to see all available campaigns.</p>
+      {readyCampaigns.length > 1 ? (
+        <section className="recipient-ready-list panel" aria-labelledby="ready-claims-title">
+          <h2 id="ready-claims-title">Ready claims</h2>
+          <div>
+            {readyCampaigns.map((campaign) => (
+              <Link className="recipient-ready-row" href={`/claim/${campaign.id}`} key={campaign.id}>
+                <span>
+                  <strong>{campaign.name}</strong>
+                  <small>{maskAddress(campaign.tokenAddress)}</small>
+                </span>
+                <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+            ))}
+          </div>
         </section>
-      ) : (
-        <div className="recipient-campaign-grid">
-          {filteredCampaigns.map((campaign) => (
-            <RecipientCampaignCard campaign={campaign} claimCheck={claimChecks[campaign.id]} connected={Boolean(address)} key={campaign.id} />
-          ))}
-        </div>
-      )}
+      ) : null}
+
+      {readyVestingCampaigns.length > 0 ? (
+        <section className="recipient-ready-list panel" aria-labelledby="ready-vesting-title">
+          <h2 id="ready-vesting-title">Vesting schedules</h2>
+          <div>
+            {readyVestingCampaigns.map((campaign) => (
+              <Link className="recipient-ready-row" href={`/vesting/${campaign.id}`} key={campaign.id}>
+                <span>
+                  <strong>{campaign.name}</strong>
+                  <small>{vestingChecks[campaign.id]?.message ?? maskAddress(campaign.tokenAddress)}</small>
+                </span>
+                <CalendarClock size={16} aria-hidden="true" />
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </section>
   );
 }
 
-function RecipientCampaignCard({ campaign, claimCheck, connected }: { campaign: Campaign; claimCheck?: ClaimCheck; connected: boolean }) {
-  const status = connected ? claimCheck?.status ?? "checking" : "missing";
-  const payloadReady = connected && status === "ready";
-  const deployed = Boolean(campaign.airdropAddress);
-
+function RecipientStep({
+  icon,
+  label,
+  value,
+  state,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  state: "done" | "active" | "idle";
+}) {
   return (
-    <article className="recipient-campaign-card">
-      <div className="recipient-campaign-top">
-        <span className={campaign.status === "live" ? "pill pill-live" : "pill pill-sealed"}>{campaign.status}</span>
-        <ClaimStatePill connected={connected} claimCheck={claimCheck} />
-      </div>
+    <div className={`recipient-flow-step is-${state}`}>
+      <span>{icon}</span>
       <div>
-        <h2>{campaign.name}</h2>
-        <p>{formatWindow(campaign.startTimestamp, campaign.endTimestamp)}</p>
+        <small>{label}</small>
+        <strong>{value}</strong>
       </div>
-      <div className="recipient-campaign-facts">
-        <RecipientFact label="Token" value={maskAddress(campaign.tokenAddress)} />
-        <RecipientFact label="Campaign" value={deployed && campaign.airdropAddress ? maskAddress(campaign.airdropAddress) : "pending"} />
-        <RecipientFact label="Recipients" value={campaign.recipientCount.toLocaleString()} />
-        <RecipientFact label="Claims" value={campaign.claimsCount.toLocaleString()} />
-      </div>
-      <div className="recipient-campaign-action">
-        {payloadReady ? (
-          <Link className="button-primary" href={`/claim/${campaign.id}`}>
-            Open claim <ArrowRight size={15} aria-hidden="true" />
-          </Link>
-        ) : deployed ? (
-          <Link className="button-secondary" href={`/claim/${campaign.id}`}>
-            Check claim <ArrowRight size={15} aria-hidden="true" />
-          </Link>
-        ) : (
-          <button className="button-secondary" type="button" disabled>
-            Not live
-          </button>
-        )}
-      </div>
-    </article>
-  );
-}
-
-function ClaimStatePill({ connected, claimCheck }: { connected: boolean; claimCheck?: ClaimCheck }) {
-  if (!connected) {
-    return <span className="recipient-state-pill is-waiting"><Clock3 size={13} aria-hidden="true" /> Connect wallet</span>;
-  }
-  if (!claimCheck || claimCheck.status === "checking") {
-    return <span className="recipient-state-pill is-waiting"><Clock3 size={13} aria-hidden="true" /> Checking</span>;
-  }
-  if (claimCheck.status === "ready") {
-    return <span className="recipient-state-pill is-ready"><CheckCircle2 size={13} aria-hidden="true" /> Ready</span>;
-  }
-  if (claimCheck.status === "error") {
-    return <span className="recipient-state-pill is-error"><XCircle size={13} aria-hidden="true" /> Error</span>;
-  }
-  return <span className="recipient-state-pill"><ShieldCheck size={13} aria-hidden="true" /> Not assigned</span>;
-}
-
-function RecipientStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="recipient-stat">
-      <span>{label}</span>
-      <strong>{value}</strong>
     </div>
   );
 }
 
-function RecipientFact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="recipient-fact">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
+function getDashboardState({
+  connected,
+  campaignCount,
+  readyClaimCount,
+  readyVestingCount,
+  claimedCount,
+  checking,
+  hasError,
+}: {
+  connected: boolean;
+  campaignCount: number;
+  readyClaimCount: number;
+  readyVestingCount: number;
+  claimedCount: number;
+  checking: boolean;
+  hasError: boolean;
+}): { title: string; copy: string } {
+  const readyCount = readyClaimCount + readyVestingCount;
+
+  if (!campaignCount) return { title: "No distributions yet.", copy: "Live claims and schedules appear here." };
+  if (!connected) return { title: "Connect wallet.", copy: "Matching claims and schedules appear automatically." };
+  if (checking) return { title: "Checking wallet.", copy: "Matching this wallet." };
+  if (readyCount > 0) {
+    if (readyClaimCount > 0) return { title: readyClaimCount === 1 ? "Claim ready." : `${readyClaimCount} claims ready.`, copy: "Open the claim and confirm." };
+    return { title: readyVestingCount === 1 ? "Vesting ready." : `${readyVestingCount} vesting schedules ready.`, copy: "Open vesting as tokens unlock." };
+  }
+  if (claimedCount > 0) return { title: claimedCount === 1 ? "Already claimed." : "Claims complete.", copy: "No pending claim." };
+  if (hasError) return { title: "Check failed.", copy: "Refresh or reconnect wallet." };
+  return { title: "No match found.", copy: "No live claim or schedule for this wallet." };
 }
 
 function isClaimCampaign(campaign: Campaign): boolean {
   return !campaign.kind || campaign.kind === "claim";
 }
 
-function formatWindow(startTimestamp: number, endTimestamp: number): string {
-  return `${formatDate(startTimestamp)} to ${formatDate(endTimestamp)}`;
-}
-
-function formatDate(timestamp: number): string {
-  return new Date(timestamp * 1000).toISOString().slice(0, 10);
+function isVestingCampaign(campaign: Campaign): boolean {
+  return campaign.kind === "vesting";
 }

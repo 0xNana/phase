@@ -8,7 +8,7 @@ export default async function AdminPage() {
 
   return (
     <AppChrome campaignId={campaign?.id}>
-      <AdminBuilder initialCampaigns={campaigns} />
+      <AdminBuilder />
     </AppChrome>
   );
 }
