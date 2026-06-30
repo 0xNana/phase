@@ -1,6 +1,6 @@
-# Phase Admin Flow
+# Phase Distribution Flow
 
-This document explains how an individual admin uses Phase to run the three supported private distribution modes:
+This document explains how an individual admin uses Phase to run the three supported private token distribution flows:
 
 - `Claim`
 - `Batch`
@@ -10,13 +10,13 @@ The intent is operational clarity, not contract internals. Each mode is describe
 
 ## Shared Pattern
 
-All three modes follow the same top-level sequence in `/admin`:
+`/admin` opens on the Claim flow by default. Batch and Vesting are available from `Other flows`:
 
-1. Click `Launch Now`.
-2. Choose a mode.
-3. Enter campaign details.
-4. Import recipients with `address,amount`.
-5. Continue into the execution step for the selected mode.
+1. Choose `Claim`, or open `Other flows` for `Batch` or `Vesting`.
+2. Enter distribution details.
+3. Import recipients with `address,amount`.
+4. Review the privacy boundary before launch.
+5. Continue into the execution step for the selected flow.
 
 The app is designed to avoid showing every possible control at once. At execution time, it should prioritize the next useful action for the admin.
 
@@ -44,13 +44,13 @@ The import step supports both:
 
 ## Claim Mode
 
-Claim mode is for private airdrops where each recipient later opens a claim page, reveals only their own amount, and claims.
+Claim mode is for private token distributions where each recipient later opens a claim page, reveals only their own amount, and claims.
 
 ### Admin journey
 
 1. Choose `Claim`.
 2. Enter:
-   `Airdrop name`, `Token contract`, `Start date`, `End date`
+   `Drop name`, `Token recipients claim`, `Claims open`, `Claims close`
 3. Import recipients.
 4. Continue to execution.
 
@@ -58,14 +58,14 @@ Claim mode is for private airdrops where each recipient later opens a claim page
 
 The app should surface only the next meaningful action:
 
-1. `Create + Fund Airdrop`
-   This is the preferred path for new launches. It creates the TokenOps airdrop and funds it in one flow.
-2. `Create Airdrop Only`
+1. `Create + fund drop`
+   This is the preferred path for new claim distributions. It creates the TokenOps-backed distribution and funds it in one flow.
+2. `Create drop only`
    Use this only when the admin intentionally wants a two-step create-then-fund path.
-3. `Fund Airdrop`
-   Appears only after an airdrop exists and still needs funding.
-4. `Sign Claims`
-   Appears only after the airdrop is funded.
+3. `Fund drop`
+   Appears only after a claim distribution exists and still needs funding.
+4. `Seal claims`
+   Appears only after the distribution is funded.
 5. `Open Claim Portal`
    Appears only after claim payloads have been signed and stored.
 
@@ -73,8 +73,8 @@ The app should surface only the next meaningful action:
 
 At each stage:
 
-- create: deploys a TokenOps confidential airdrop instance
-- fund: encrypts the total amount and funds the airdrop
+- create: deploys a TokenOps confidential airdrop clone for the claim distribution
+- fund: encrypts the total amount and funds the distribution
 - sign: encrypts each recipient allocation and signs an admin claim authorization
 - portal: exposes the recipient claim route for reveal and claim
 
@@ -82,8 +82,8 @@ At each stage:
 
 For most admins:
 
-1. `Create + Fund Airdrop`
-2. `Sign Claims`
+1. `Create + fund drop`
+2. `Seal claims`
 3. `Open Claim Portal`
 
 ## Batch Mode
@@ -94,7 +94,7 @@ Batch mode is for one-to-many confidential payouts without a recipient claim por
 
 1. Choose `Batch`.
 2. Enter:
-   `Airdrop name`, `Token contract`
+   `Drop name`, `Token recipients claim`
 3. Import recipients.
 4. Continue to execution.
 
@@ -147,7 +147,7 @@ Vesting mode is for private vesting schedules managed through a confidential ves
 
 1. Choose `Vesting`.
 2. Enter:
-   `Airdrop name`, `Token contract`, `Start date`, `End date`
+   `Drop name`, `Token recipients claim`, `Claims open`, `Claims close`
 3. Import recipients.
 4. Continue to execution.
 
@@ -208,4 +208,4 @@ For an individual admin, the correct UX is:
 - keep advanced controls secondary
 - reveal recovery and manager operations only when they become relevant
 
-The app should feel like a guided process, not a form dump or an operations console exposed too early.
+The app should feel like a guided distribution workflow, not a form dump or an operations console exposed too early.

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { ChevronsLeft, ChevronsRight, Coins, Eye, Home, Menu, Send, UserCheck, X } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Eye, Home, Menu, Send, UserCheck, X } from "lucide-react";
 import WalletDropdown from "./WalletDropdown";
 
 const navLinks: Array<{
@@ -43,27 +43,20 @@ const navLinks: Array<{
     icon: Eye,
     match: (pathname) => pathname.startsWith("/observer"),
   },
-  {
-    href: "/faucet",
-    label: "Faucet",
-    description: "cUSDC",
-    icon: Coins,
-    match: (pathname) => pathname.startsWith("/faucet"),
-  },
 ];
 
 const footerFaqs = [
   {
-    question: "What makes a Phase airdrop private?",
-    answer: "Recipient amounts stay sealed by default. Each wallet reveals only its own allocation, while public views use masked recipients and proof hashes.",
+    question: "What makes a Phase distribution private?",
+    answer: "Recipient amounts stay sealed by default. Each wallet reveals only its own allocation, while public views use masked recipients and proof activity.",
   },
   {
-    question: "Which airdrop types can teams configure?",
-    answer: "Teams can launch claimable, bulk, and vested private airdrops from the same admin workspace.",
+    question: "Which distribution flows can teams configure?",
+    answer: "Teams can launch claimable drops, bulk payouts, and vested token distributions from the same admin workspace.",
   },
   {
-    question: "What powers Phase airdrops?",
-    answer: "Phase is built on TokenOps SDK for private airdrop creation, recipient claims, and proof-aware campaign flows.",
+    question: "What powers Phase distributions?",
+    answer: "Phase is built on TokenOps SDK for private distribution setup, recipient claims, and proof-aware campaign flows.",
   },
   {
     question: "Who can reveal an allocation?",
@@ -125,6 +118,7 @@ export default function AppChrome({ children }: { children: React.ReactNode; cam
           </div>
 
           <div className="mobile-wallet-slot">
+            <Link className="header-faucet-link" href="/faucet">Get cUSDC</Link>
             <WalletDropdown />
           </div>
         </div>
@@ -189,6 +183,7 @@ export default function AppChrome({ children }: { children: React.ReactNode; cam
 
       <div className="content-shell">
         <header className="desktop-walletbar">
+          <Link className="header-faucet-link" href="/faucet">Get cUSDC</Link>
           <WalletDropdown />
         </header>
 
@@ -217,7 +212,7 @@ export default function AppChrome({ children }: { children: React.ReactNode; cam
                 <Image className="footer-logo" src="/phase-logo.png" alt="" aria-hidden="true" width={34} height={34} />
                 <span>Phase</span>
               </Link>
-              <p>Private airdrops built on TokenOps SDK.</p>
+              <p>Private distributions built on TokenOps SDK.</p>
             </div>
 
             <nav className="app-footer-nav" aria-label="Footer navigation">
@@ -258,7 +253,7 @@ function BrandLink({ compact }: { compact: boolean }) {
       <Image className="brand-logo" src="/phase-logo.png" alt="" aria-hidden="true" width={38} height={38} priority />
       <span className="brand-copy">
         <span className="brand-name">Phase</span>
-        <span className="brand-subtitle">Private airdrops</span>
+        <span className="brand-subtitle">Private distributions</span>
       </span>
     </Link>
   );

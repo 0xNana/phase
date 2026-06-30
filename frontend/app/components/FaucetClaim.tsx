@@ -196,7 +196,7 @@ export default function FaucetClaim() {
       <div className="faucet-hero faucet-hero-clean">
         <div>
           <span className="product-kicker">Sepolia cUSDC faucet</span>
-          <h1>Claim demo cUSDC for private airdrop ops.</h1>
+          <h1>Claim demo cUSDC for private distribution testing.</h1>
           <p>
             Mint the confidential ERC-7984 demo token used by Phase, then use the same cUSDC
             contract in the admin builder when creating claim, batch, or vesting distributions.

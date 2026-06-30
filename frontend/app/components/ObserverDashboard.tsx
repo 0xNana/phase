@@ -53,12 +53,11 @@ export default function ObserverDashboard({ campaigns }: { campaigns: Campaign[]
     <section className="observer-page" aria-labelledby="observer-title">
       <div className="observer-hero observer-hero-clean">
         <div>
-          <span className="product-kicker">
-            <Eye size={16} aria-hidden="true" />
-            Observer
-          </span>
-          <h1 id="observer-title">Track airdrops.</h1>
-          <p>Status and proofs, with allocations sealed.</p>
+          <h1 id="observer-title">Observer</h1>
+        </div>
+        <div className="observer-hero-proofbar" aria-label="Observer privacy summary">
+          <span><ShieldCheck size={15} aria-hidden="true" /> Proofs</span>
+          <span>Amounts sealed</span>
         </div>
       </div>
 
@@ -67,25 +66,29 @@ export default function ObserverDashboard({ campaigns }: { campaigns: Campaign[]
           <Search size={17} aria-hidden="true" />
           <input className="input" placeholder="Search campaigns" value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
-        <div className="observer-filterbar" aria-label="Campaign filters">
-          {filterOptions.map((option) => (
-            <button
-              className={filter === option.id ? "is-active" : ""}
-              type="button"
-              aria-pressed={filter === option.id}
-              onClick={() => setFilter(option.id)}
-              key={option.id}
-            >
-              <span>{option.label}</span>
-              <strong>{filterCounts[option.id].toLocaleString()}</strong>
-            </button>
-          ))}
-        </div>
-        <div className="observer-toolbar-stats" aria-label="Observer campaign stats">
-          <ObserverStat label="Campaigns" value={campaigns.length.toLocaleString()} />
-          <ObserverStat label="Live" value={liveCampaigns.toLocaleString()} />
-          <ObserverStat label="Proofs" value={claimProofs.toLocaleString()} />
-        </div>
+        {campaigns.length > 0 ? (
+          <>
+            <div className="observer-filterbar" aria-label="Campaign filters">
+              {filterOptions.map((option) => (
+                <button
+                  className={filter === option.id ? "is-active" : ""}
+                  type="button"
+                  aria-pressed={filter === option.id}
+                  onClick={() => setFilter(option.id)}
+                  key={option.id}
+                >
+                  <span>{option.label}</span>
+                  <strong>{filterCounts[option.id].toLocaleString()}</strong>
+                </button>
+              ))}
+            </div>
+            <div className="observer-toolbar-stats" aria-label="Observer campaign stats">
+              <ObserverStat label="Campaigns" value={campaigns.length.toLocaleString()} />
+              <ObserverStat label="Live" value={liveCampaigns.toLocaleString()} />
+              <ObserverStat label="Proofs" value={claimProofs.toLocaleString()} />
+            </div>
+          </>
+        ) : null}
       </div>
 
       {campaigns.length === 0 ? (
@@ -140,7 +143,7 @@ function ObserverCampaignCard({ campaign }: { campaign: Campaign }) {
       <div className="observer-campaign-metrics" aria-label={`${campaign.name} summary`}>
         <ObserverMetric label="Recipients" value={campaign.recipientCount.toLocaleString()} />
         <ObserverMetric label={isBatch ? "Mode" : "Claims"} value={isBatch ? "Direct" : campaign.claimsCount.toLocaleString()} />
-        <ObserverMetric label="Token" value={maskAddress(campaign.tokenAddress)} />
+        <ObserverMetric label="Amounts" value="Sealed" />
       </div>
 
       <div className="observer-campaign-signal">

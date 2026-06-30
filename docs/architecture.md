@@ -2,7 +2,7 @@
 
 ## Boundary
 
-Phase uses TokenOps for the confidential airdrop primitive. Campaign metadata and claim payloads are stored in Supabase via Next.js API routes.
+Phase uses TokenOps for the confidential claim-distribution primitive. Product flows are framed as private token distributions; the claim flow is backed by a TokenOps confidential airdrop clone. Campaign metadata and claim payloads are stored in Supabase via Next.js API routes.
 
 ## Confidential Data
 
@@ -13,11 +13,11 @@ Never store or expose these through public routes:
 - full recipient list
 - aggregate distribution amount
 
-The recipient API returns a claim payload only for the connected recipient address. The observer API returns sanitized campaign metadata and aggregate claim counts.
+The recipient API returns a claim payload only for the connected recipient address. The observer API returns sanitized campaign metadata, proof activity, and aggregate claim counts.
 
-## TokenOps Lifecycle
+## TokenOps Claim Lifecycle
 
-1. `useCreateConfidentialAirdropAndGetAddress` deploys the airdrop clone.
+1. `useCreateConfidentialAirdropAndGetAddress` deploys the claim-distribution clone.
 2. `encryptUint64` encrypts each allocation as an external `euint64`.
 3. `useSignClaimAuthorization` signs `Claim(address recipient, bytes32 encryptedAmount)`.
 4. `useGetClaimAmount` submits a write transaction that grants ACL access to the caller and returns the decryptable handle.

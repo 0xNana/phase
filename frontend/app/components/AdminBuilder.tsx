@@ -42,9 +42,7 @@ import {
   ArrowLeft,
   CalendarDays,
   CheckCircle2,
-  Copy,
   Download,
-  FileLock2,
   KeyRound,
   Layers3,
   PauseCircle,
@@ -54,6 +52,9 @@ import {
   Save,
   Send,
   ShieldCheck,
+  EyeOff,
+  LockKeyhole,
+  Users,
   Wallet,
   X,
 } from "lucide-react";
@@ -71,11 +72,11 @@ const initialTokenAddress = configuredToken === zeroAddress ? "" : configuredTok
 type ReleaseCadence = "single" | "monthly" | "milestone";
 type BatchStrategy = "auto" | "fixed" | "manual";
 type ClaimCreateMode = "fund" | "deploy";
-type LaunchStep = "mode" | "details" | "recipients" | "flow";
+type LaunchStep = "details" | "recipients" | "review" | "flow";
 const launchProgressByStep: Record<LaunchStep, number> = {
-  mode: 25,
-  details: 50,
-  recipients: 75,
+  details: 25,
+  recipients: 55,
+  review: 78,
   flow: 100,
 };
 
@@ -96,6 +97,8 @@ const campaignKinds: Array<{ id: CampaignKind; label: string }> = [
   { id: "batch", label: "Batch" },
   { id: "vesting", label: "Vesting" },
 ];
+
+const advancedCampaignKinds = campaignKinds.filter((kind) => kind.id !== "claim");
 
 const releaseCadences: Array<{ id: ReleaseCadence; label: string }> = [
   { id: "single", label: "Single" },
@@ -215,9 +218,8 @@ export default function AdminBuilder() {
   const [issueProgress, setIssueProgress] = useState({ done: 0, total: 0 });
   const [status, setStatus] = useState("Ready.");
   const [error, setError] = useState<string | null>(null);
-  const [copiedTokenAddress, setCopiedTokenAddress] = useState(false);
-  const [launchOpen, setLaunchOpen] = useState(false);
-  const [launchStep, setLaunchStep] = useState<LaunchStep>("mode");
+  const [launchOpen, setLaunchOpen] = useState(true);
+  const [launchStep, setLaunchStep] = useState<LaunchStep>("details");
 
   const targetAirdrop = airdropAddress || savedCampaign?.airdropAddress || "";
   const vestingManagerAddress = safeAddress(targetAirdrop);
@@ -462,8 +464,7 @@ export default function AdminBuilder() {
   const showClaimPortalAction = claimPayloadReady && Boolean(claimPortalHref);
   const showClaimApprovalAction = (showClaimCreateActions || showClaimFundAction) && !claimFactoryApproved;
   const showClaimCreateChoice = showClaimCreateActions && claimFactoryApproved;
-  const claimFundAmountLabel = totalAmount > 0n ? `${formatTokenUnits(totalAmount)} cUSDC` : "Airdrop";
-  const selectedClaimCreateLabel = claimCreateMode === "fund" ? `Create + Fund ${claimFundAmountLabel}` : "Create Airdrop Only";
+  const selectedClaimCreateLabel = claimCreateMode === "fund" ? "Create + fund drop" : "Create drop only";
   const selectedClaimCreateDisabled =
     busy ||
     (claimCreateMode === "fund"
@@ -533,37 +534,24 @@ export default function AdminBuilder() {
   const selectedKind = campaignKinds.find((item) => item.id === campaignKind) ?? campaignKinds[0];
   const modeSummary =
     campaignKind === "batch"
-      ? "Disperse private allocations to a CSV list in encrypted batches."
+      ? "Send sealed allocations to a CSV list in batches."
       : campaignKind === "vesting"
-        ? "Open private vesting schedules and manage the vesting manager."
+        ? "Open private vesting schedules for recipients."
         : "Launch a claim portal where each wallet can reveal only its own allocation.";
 
   const launchDialogTitle =
-    launchStep === "mode"
-      ? "Choose mode"
-      : launchStep === "details"
-        ? `${selectedKind.label} details`
-        : launchStep === "recipients"
-          ? "Import recipients"
+    launchStep === "details"
+      ? "Setup"
+      : launchStep === "recipients"
+        ? "Add recipients"
+        : launchStep === "review"
+          ? "Review privacy"
           : campaignKind === "batch"
             ? "Disperse"
             : campaignKind === "vesting"
               ? "Vesting"
-              : "Claimable airdrop";
+              : "Launch claim drop";
   const launchProgressPercent = launchProgressByStep[launchStep];
-
-  async function copyCusdcTokenAddress() {
-    setError(null);
-
-    try {
-      await navigator.clipboard.writeText(cusdcTokenAddress);
-      setCopiedTokenAddress(true);
-      setStatus("cUSDC token contract copied for airdrop ops.");
-      window.setTimeout(() => setCopiedTokenAddress(false), 1600);
-    } catch {
-      setError("Could not copy the cUSDC token contract. Select the address and copy it manually.");
-    }
-  }
 
   async function persistCampaign(nextAirdropAddress?: Address, status?: Campaign["status"]) {
     if (!campaignName.trim()) throw new Error("Enter a campaign name.");
@@ -707,7 +695,7 @@ export default function AdminBuilder() {
       return;
     }
     if (!claimDeployment) {
-      setError("Use Create + Fund Airdrop for new claim campaigns.");
+      setError("Use Create + Fund drop for new claim campaigns.");
       return;
     }
     if (!recipientReady || totalAmount <= 0n) {
@@ -1253,15 +1241,12 @@ export default function AdminBuilder() {
     <section className="admin-page">
       <div className="admin-hero admin-hero-clean">
         <div>
-          <span className="product-kicker">
-            <FileLock2 size={16} aria-hidden="true" />
-            Admin
-          </span>
-          <h1>Create private airdrops.</h1>
-          <p>Select claimable, bulk, or vested airdrops. Import recipients. Launch.</p>
+          <h1>Private claim drop</h1>
+          <p>Recipients reveal their own allocation. Observers see activity, not amounts.</p>
         </div>
       </div>
 
+      {!launchOpen ? (
       <div className="admin-layout admin-layout-single admin-console-layout">
         <div className="admin-primary">
           <section className="admin-panel admin-config-panel">
@@ -1270,36 +1255,37 @@ export default function AdminBuilder() {
                 className="admin-envelope-trigger field-wide"
                 type="button"
                 onClick={() => {
-                  setLaunchStep("mode");
+                  setLaunchStep("details");
                   setLaunchOpen(true);
                 }}
               >
                 <span className="admin-setting-icon"><Rocket size={18} aria-hidden="true" /></span>
                 <span>
-                  <strong>Launch Now</strong>
-                  <small>Choose Claim, Batch, or Vesting in the builder.</small>
+                  <strong>Resume setup</strong>
+                  <small>Continue configuring the drop.</small>
                 </span>
               </button>
             </div>
           </section>
         </div>
       </div>
+      ) : null}
 
       {launchOpen ? (
-        <div className="admin-envelope-backdrop" role="presentation">
-          <section className="admin-envelope-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-envelope-title">
+        <div className="admin-envelope-backdrop">
+          <section className="admin-envelope-dialog" aria-labelledby="admin-envelope-title">
             <div className="admin-envelope-header">
               <div className="admin-envelope-title-block">
-                <div className={launchStep === "mode" ? "admin-launch-journey" : "admin-launch-journey has-back"} aria-label="Setup progress">
-                  {launchStep !== "mode" ? (
+                <div className={launchStep === "details" ? "admin-launch-journey" : "admin-launch-journey has-back"} aria-label="Setup progress">
+                  {launchStep !== "details" ? (
                     <button
                       className="admin-launch-back"
                       type="button"
                       aria-label="Back to previous launch step"
                       onClick={() => {
-                        if (launchStep === "details") setLaunchStep("mode");
-                        else if (launchStep === "recipients") setLaunchStep("details");
-                        else setLaunchStep("recipients");
+                        if (launchStep === "recipients") setLaunchStep("details");
+                        else if (launchStep === "review") setLaunchStep("recipients");
+                        else setLaunchStep("review");
                       }}
                     >
                       <ArrowLeft size={13} aria-hidden="true" />
@@ -1328,34 +1314,40 @@ export default function AdminBuilder() {
 
             <div className="admin-envelope-grid">
               <div className="admin-envelope-main">
-                {launchStep === "mode" ? (
-                  <div className="admin-launch-step">
-                    <div className="admin-mode-select">
-                      <Field label="Mode">
-                        <select className="input" value={campaignKind} onChange={(event) => handleCampaignKindChange(event.target.value as CampaignKind)}>
-                          {campaignKinds.map((kind) => (
-                            <option key={kind.id} value={kind.id}>
-                              {kind.label}
-                            </option>
-                          ))}
-                        </select>
-                      </Field>
-                    </div>
-                    <div className="admin-action-grid admin-envelope-actions admin-launch-actions">
-                      <button className="button-primary" type="button" onClick={() => setLaunchStep("details")}>
-                        <Play size={16} aria-hidden="true" />
-                        Continue
-                      </button>
-                    </div>
-                  </div>
-                ) : launchStep === "details" ? (
+                {launchStep === "details" ? (
                   <div className="admin-launch-step">
                     <div className="admin-launch-setup">
-                      <Field label="Airdrop name">
+                      <div className="admin-mode-row field-wide">
+                        <button
+                          className={campaignKind === "claim" ? "admin-mode-choice is-active" : "admin-mode-choice"}
+                          type="button"
+                          aria-pressed={campaignKind === "claim"}
+                          onClick={() => handleCampaignKindChange("claim")}
+                        >
+                          Claim
+                        </button>
+                        <details className="admin-advanced-modes">
+                          <summary>Other flows</summary>
+                          <div className="admin-mode-tabs" role="group" aria-label="Other distribution flows">
+                            {advancedCampaignKinds.map((kind) => (
+                              <button
+                                className={campaignKind === kind.id ? "is-active" : ""}
+                                type="button"
+                                aria-pressed={campaignKind === kind.id}
+                                onClick={() => handleCampaignKindChange(kind.id)}
+                                key={kind.id}
+                              >
+                                {kind.label}
+                              </button>
+                            ))}
+                          </div>
+                        </details>
+                      </div>
+                      <Field label="Drop name">
                         <input className="input" placeholder="Private investor airdrop" value={campaignName} onChange={(event) => setCampaignName(event.target.value)} />
                       </Field>
                       <div className="admin-field token-contract-field field-wide">
-                        <label htmlFor="admin-token-contract">Token contract</label>
+                        <label htmlFor="admin-token-contract">Token recipients claim</label>
                         <input
                           id="admin-token-contract"
                           className="input mono"
@@ -1364,37 +1356,27 @@ export default function AdminBuilder() {
                           onChange={(event) => setTokenAddress(event.target.value as Address)}
                         />
                         <div className="contract-helper-row">
-                          <span className="contract-helper-address">
-                            <span>cUSDC demo token</span>
-                            <code>{cusdcTokenAddress}</code>
-                          </span>
-                          <span className="contract-helper-actions">
-                            <button
-                              className="button-ghost"
-                              type="button"
-                              onClick={() => {
-                                setTokenAddress(cusdcTokenAddress);
-                                setStatus("cUSDC token contract loaded for airdrop ops.");
-                              }}
-                            >
-                              Use cUSDC
-                            </button>
-                            <button className="button-ghost" type="button" onClick={() => void copyCusdcTokenAddress()}>
-                              {copiedTokenAddress ? <CheckCircle2 size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
-                              {copiedTokenAddress ? "Copied" : "Copy"}
-                            </button>
-                            <Link className="button-ghost" href="/faucet">
-                              Faucet
-                            </Link>
-                          </span>
+                          <button
+                            className="button-ghost"
+                            type="button"
+                            onClick={() => {
+                              setTokenAddress(cusdcTokenAddress);
+                              setStatus("cUSDC selected for this drop.");
+                            }}
+                          >
+                            Use cUSDC
+                          </button>
+                          <Link className="button-ghost" href="/faucet">
+                            Get cUSDC
+                          </Link>
                         </div>
                       </div>
                       {campaignKind === "claim" ? (
                         <>
-                          <Field label="Start date">
+                          <Field label="Claims open">
                             <input className="input" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
                           </Field>
-                          <Field label="End date">
+                          <Field label="Claims close">
                             <input className="input" type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
                           </Field>
                         </>
@@ -1467,9 +1449,35 @@ export default function AdminBuilder() {
                       ) : null}
                     </div>
                     <div className="admin-action-grid admin-envelope-actions admin-launch-actions">
-                      <button className="button-primary" type="button" disabled={!recipientReady} onClick={() => setLaunchStep("flow")}>
+                      <button className="button-primary" type="button" disabled={!recipientReady} onClick={() => setLaunchStep("review")}>
                         <Play size={16} aria-hidden="true" />
                         Continue
+                      </button>
+                    </div>
+                  </div>
+                ) : launchStep === "review" ? (
+                  <div className="admin-launch-step">
+                    <section className="admin-review-panel" aria-labelledby="admin-review-title">
+                      <div className="admin-review-header">
+                        <span className="pill pill-live">Observer-safe</span>
+                        <h3 id="admin-review-title">Review before the drop is sealed</h3>
+                        <p>Confirm what recipients can reveal and what the public observer will never see.</p>
+                      </div>
+                      <div className="admin-review-grid">
+                        <ReviewItem icon={<Users size={18} aria-hidden="true" />} label="Recipients" value={parsed.rows.length.toLocaleString() + " wallets"} note="Only matching wallets can load claim payloads." />
+                        <ReviewItem icon={<LockKeyhole size={18} aria-hidden="true" />} label="Total allocation" value="Sealed" note={formatTokenUnits(totalAmount) + " cUSDC stays out of the public observer view."} />
+                        <ReviewItem icon={<ShieldCheck size={18} aria-hidden="true" />} label="Token" value={tokenValid ? maskAddress(tokenAddress as Address) : "Set token"} note="Recipients claim confidential cUSDC through their own wallet." />
+                        <ReviewItem icon={<CalendarDays size={18} aria-hidden="true" />} label="Claim window" value={campaignKind === "claim" ? launchTimelineLabel : selectedKind.label} note={campaignKind === "claim" ? startDate + " to " + endDate : modeSummary} />
+                      </div>
+                      <div className="admin-review-boundary">
+                        <EyeOff size={17} aria-hidden="true" />
+                        <span>Observer view shows status, masked recipients, and proof activity. It never shows recipient amounts.</span>
+                      </div>
+                    </section>
+                    <div className="admin-action-grid admin-envelope-actions admin-launch-actions">
+                      <button className="button-primary" type="button" disabled={!recipientReady || !launchDetailsReady} onClick={() => setLaunchStep("flow")}>
+                        <ShieldCheck size={16} aria-hidden="true" />
+                        Continue to launch
                       </button>
                     </div>
                   </div>
@@ -1610,7 +1618,7 @@ export default function AdminBuilder() {
                       {showClaimApprovalAction ? (
                         <button className="button-primary" type="button" disabled={busy || !canApproveClaimFactory} onClick={approveClaimFactoryOperator}>
                           <ShieldCheck size={16} aria-hidden="true" />
-                          Approve Factory
+                          Approve token
                         </button>
                       ) : null}
                       {showClaimCreateChoice ? (
@@ -1644,13 +1652,13 @@ export default function AdminBuilder() {
                       {showClaimFundAction ? (
                         <button className="button-primary" type="button" disabled={busy || !canFundClaimPot} onClick={fundCampaignPot}>
                           <Wallet size={16} aria-hidden="true" />
-                          Fund Airdrop
+                          Fund drop
                         </button>
                       ) : null}
                       {showClaimSignAction ? (
                         <button className="button-primary" type="button" disabled={busy || !canSignClaims} onClick={issueClaims}>
                           <KeyRound size={16} aria-hidden="true" />
-                          Sign Claims
+                          Seal claims
                         </button>
                       ) : null}
                       {showClaimPortalAction ? (
@@ -1661,14 +1669,14 @@ export default function AdminBuilder() {
                       ) : null}
                       <button className="button-secondary" type="button" disabled={busy} onClick={saveDraft}>
                         <Save size={16} aria-hidden="true" />
-                        Save
+                        Save draft
                       </button>
                     </div>
                     <StatusMessage status={status} error={error ?? factoryDefaultGasFee.error?.message ?? factoryCustomFee.error?.message ?? fundAirdrop.error?.message ?? null} />
                     {showClaimApprovalAction ? (
                       <div className="validation-message">
                         <AlertTriangle size={16} aria-hidden="true" />
-                        <span>{claimApprovalLabel}. Approve token spending by the factory contract before creating or funding the airdrop.</span>
+                        <span>{claimApprovalLabel}. Approve token spending once so Phase can create and fund this drop.</span>
                       </div>
                     ) : null}
                     {issueProgress.total > 0 ? (
@@ -1941,6 +1949,19 @@ export default function AdminBuilder() {
         </div>
       ) : null}
     </section>
+  );
+}
+
+function ReviewItem({ icon, label, value, note }: { icon: React.ReactNode; label: string; value: string; note: string }) {
+  return (
+    <div className="admin-review-item">
+      <span className="admin-review-icon">{icon}</span>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+        <p>{note}</p>
+      </div>
+    </div>
   );
 }
 

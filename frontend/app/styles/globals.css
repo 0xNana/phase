@@ -1268,6 +1268,27 @@ textarea:focus-visible {
   line-height: 1.55;
 }
 
+.observer-hero-proofbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.observer-hero-proofbar span {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(15, 118, 110, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--teal);
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 820;
+}
+
 .observer-toolbar {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) auto auto;
@@ -1807,6 +1828,22 @@ textarea:focus-visible {
   margin: 6px 0 0;
   color: var(--muted);
   font-size: 14px;
+}
+
+.observer-sealed-amount {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid rgba(104, 64, 198, 0.18);
+  border-radius: 999px;
+  background: rgba(104, 64, 198, 0.08);
+  color: var(--primary);
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 830;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .observer-detail-boundary {
@@ -2981,47 +3018,13 @@ textarea:focus-visible {
 
 
 .contract-helper-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  border: 1px solid rgba(15, 118, 110, 0.16);
-  border-radius: 8px;
-  background: rgba(15, 118, 110, 0.06);
-  padding: 10px;
-}
-
-.contract-helper-address {
-  display: grid;
-  min-width: 0;
-  gap: 4px;
-}
-
-.contract-helper-address span {
-  color: var(--teal);
-  font-size: 11px;
-  font-weight: 820;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.contract-helper-address code {
-  overflow: hidden;
-  color: var(--ink);
-  font-family: "SFMono-Regular", "Roboto Mono", "Cascadia Mono", Consolas, monospace;
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.contract-helper-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  justify-content: flex-end;
+  align-items: center;
 }
 
-.contract-helper-actions .button-ghost {
+.contract-helper-row .button-ghost {
   min-height: 34px;
 }
 
@@ -3521,24 +3524,19 @@ textarea:focus-visible {
 }
 
 .admin-envelope-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
   display: grid;
-  overflow-y: auto;
-  place-items: center;
-  background: rgba(7, 23, 41, 0.48);
-  padding: clamp(18px, 4vw, 42px);
+  place-items: stretch;
+  background: transparent;
+  padding: 0;
 }
 
 .admin-envelope-dialog {
-  width: min(1080px, 100%);
-  max-height: min(820px, calc(100vh - 36px));
-  overflow: auto;
+  width: 100%;
+  overflow: visible;
   border: 1px solid rgba(216, 225, 234, 0.94);
   border-radius: 8px;
   background: #ffffff;
-  box-shadow: 0 34px 90px rgba(7, 23, 41, 0.28);
+  box-shadow: 0 18px 44px rgba(11, 28, 48, 0.08);
   padding: 20px;
 }
 
@@ -3676,6 +3674,85 @@ textarea:focus-visible {
   line-height: 1.4;
 }
 
+.admin-mode-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: start;
+}
+
+.admin-mode-choice,
+.admin-advanced-modes summary {
+  display: inline-flex;
+  min-height: 40px;
+  cursor: pointer;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--muted);
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 840;
+}
+
+.admin-mode-choice.is-active {
+  border-color: rgba(20, 122, 80, 0.22);
+  background: rgba(20, 122, 80, 0.1);
+  color: var(--green);
+}
+
+.admin-advanced-modes {
+  position: relative;
+}
+
+.admin-advanced-modes summary {
+  list-style: none;
+}
+
+.admin-advanced-modes summary::-webkit-details-marker {
+  display: none;
+}
+
+.admin-advanced-modes[open] summary {
+  border-color: rgba(104, 64, 198, 0.24);
+  background: rgba(104, 64, 198, 0.08);
+  color: var(--primary);
+}
+
+.admin-mode-tabs {
+  position: absolute;
+  z-index: 12;
+  top: calc(100% + 6px);
+  left: 0;
+  display: grid;
+  width: max-content;
+  min-width: 180px;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(11, 28, 48, 0.12);
+  padding: 8px;
+}
+
+.admin-mode-tabs button {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 820;
+}
+
+.admin-mode-tabs button.is-active {
+  border-color: rgba(104, 64, 198, 0.24);
+  background: rgba(104, 64, 198, 0.09);
+  color: var(--primary);
+}
+
 .admin-launch-step {
   display: grid;
   gap: 14px;
@@ -3704,6 +3781,108 @@ textarea:focus-visible {
 .admin-launch-actions .button-primary {
   justify-self: end;
   min-width: 160px;
+}
+
+.admin-review-panel {
+  display: grid;
+  gap: 14px;
+  border: 1px solid rgba(15, 118, 110, 0.18);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.08), rgba(104, 64, 198, 0.06)), #ffffff;
+  padding: 16px;
+}
+
+.admin-review-header {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+
+.admin-review-header h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(22px, 3vw, 32px);
+  font-weight: 860;
+  line-height: 1.05;
+}
+
+.admin-review-header p {
+  max-width: 680px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.admin-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-review-item {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  border: 1px solid rgba(216, 225, 234, 0.9);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 12px;
+}
+
+.admin-review-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid rgba(15, 118, 110, 0.14);
+  border-radius: 8px;
+  background: rgba(15, 118, 110, 0.08);
+  color: var(--teal);
+}
+
+.admin-review-item span:not(.admin-review-icon) {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 820;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-review-item strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 5px;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-review-item p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.42;
+}
+
+.admin-review-boundary {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(104, 64, 198, 0.18);
+  border-radius: 8px;
+  background: rgba(104, 64, 198, 0.08);
+  color: var(--primary);
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 760;
+  line-height: 1.45;
 }
 
 .admin-disperse-panel {
@@ -4369,6 +4548,9 @@ button.admin-setting-card {
   .admin-envelope-grid,
   .admin-envelope-actions,
   .admin-launch-setup,
+  .admin-mode-row,
+  .admin-review-grid,
+  .admin-mode-tabs,
   .admin-batch-grid,
   .admin-vesting-hero,
   .admin-vesting-facts,
@@ -4489,12 +4671,11 @@ button.admin-setting-card {
     grid-column: 2;
   }
 
-  .contract-helper-actions,
   .faucet-actions {
     justify-content: stretch;
   }
 
-  .contract-helper-actions .button-ghost,
+  .contract-helper-row .button-ghost,
   .faucet-actions .button-primary,
   .faucet-actions .button-secondary {
     width: 100%;
@@ -5014,10 +5195,32 @@ body {
   min-height: 66px;
   align-items: center;
   justify-content: flex-end;
+  gap: 10px;
   border-bottom: 1px solid rgba(216, 225, 234, 0.94);
   background: rgba(255, 255, 255, 0.86);
   backdrop-filter: blur(18px);
   padding: 12px clamp(24px, 4vw, 42px);
+}
+
+.header-faucet-link {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(15, 118, 110, 0.18);
+  border-radius: 8px;
+  background: rgba(15, 118, 110, 0.07);
+  color: var(--teal);
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 840;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.header-faucet-link:hover {
+  border-color: rgba(15, 118, 110, 0.3);
+  background: rgba(15, 118, 110, 0.11);
 }
 
 .mobile-shell-header,
@@ -5068,7 +5271,9 @@ body {
   .mobile-wallet-slot {
     display: flex;
     flex: 0 1 auto;
+    align-items: center;
     justify-content: flex-end;
+    gap: 8px;
   }
 
   .mobile-nav-overlay {
@@ -5189,6 +5394,7 @@ body {
     display: none;
   }
 
+  .mobile-wallet-slot .header-faucet-link,
   .mobile-wallet-slot .button-primary,
   .mobile-wallet-slot .button-secondary {
     min-height: 36px;

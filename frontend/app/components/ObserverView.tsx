@@ -14,20 +14,18 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
     <section className="observer-detail panel overflow-hidden">
       <div className="observer-detail-header">
         <div>
-          <span className="pill pill-watch">Observer</span>
           <h1>{campaign.name}</h1>
-          <p>{isBatch ? "Distribution status. Recipients and amounts stay sealed." : "Public claim activity only. Recipients and allocations stay sealed."}</p>
         </div>
         <div className="observer-detail-status" aria-label="Observer status">
           <span className={observerStatusPillClass(campaign)}>{statusLabel}</span>
           <strong>{isBatch ? statusLabel : `${progress}% claimed`}</strong>
-          <small>{isBatch ? "Recipient rows sealed" : `${campaign.claimsCount.toLocaleString()} proofs of ${campaign.recipientCount.toLocaleString()} recipients`}</small>
+          <small>{isBatch ? "Rows sealed" : campaign.claimsCount.toLocaleString() + " proofs"}</small>
         </div>
       </div>
 
       <div className="observer-detail-stats" aria-label="Observer campaign facts">
         <DetailStat icon={<Users size={18} aria-hidden="true" />} label="Recipients" value={campaign.recipientCount.toLocaleString()} />
-        <DetailStat icon={<FileCheck2 size={18} aria-hidden="true" />} label={isBatch ? "Distribution" : "Claim proofs"} value={isBatch ? "Direct" : campaign.claimsCount.toLocaleString()} />
+        <DetailStat icon={<FileCheck2 size={18} aria-hidden="true" />} label={isBatch ? "Mode" : "Proofs"} value={isBatch ? "Direct" : campaign.claimsCount.toLocaleString()} />
         <DetailStat icon={<ShieldCheck size={18} aria-hidden="true" />} label={isBatch ? "Campaign" : "Airdrop"} value={campaign.airdropAddress ? maskAddress(campaign.airdropAddress) : isBatch ? "Batch disperse" : "Not created"} />
         <DetailStat icon={<LockKeyhole size={18} aria-hidden="true" />} label="Token" value={maskAddress(campaign.tokenAddress)} />
       </div>
@@ -35,12 +33,11 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
       <section className="observer-detail-table">
         <div className="observer-detail-table-header">
           <div>
-            <h2>{isBatch ? "Distribution" : "Claim proofs"}</h2>
-            <p>{isBatch ? "Recipient-level rows stay sealed." : "Masked recipients and proof hashes only."}</p>
+            <h2>{isBatch ? "Distribution" : "Proofs"}</h2>
           </div>
           <div className="observer-detail-boundary">
             <EyeOff size={16} aria-hidden="true" />
-            <span>Amounts sealed</span>
+            <span>Sealed</span>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -48,10 +45,11 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
             <thead className="border-b border-[var(--line)] bg-[var(--surface-soft)] text-left text-xs font-bold uppercase text-[var(--muted)]">
               <tr>
                 <th className="px-5 py-3">{isBatch ? "Batch" : "Event"}</th>
-                <th className="px-5 py-3">{isBatch ? "Recipient" : "Masked recipient"}</th>
-                <th className="px-5 py-3">{isBatch ? "Reference" : "Proof hash"}</th>
+                <th className="px-5 py-3">Recipient</th>
+                <th className="px-5 py-3">Allocation</th>
+                <th className="px-5 py-3">Proof</th>
                 <th className="px-5 py-3">Status</th>
-                <th className="px-5 py-3 text-right">{isBatch ? "Check" : "Verification"}</th>
+                <th className="px-5 py-3 text-right">Check</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--line)]">
@@ -59,8 +57,8 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
                 proofRows.map((preview, index) => <ProofRow key={preview.proofHash} preview={preview} index={index} />)
               ) : (
                 <tr>
-                  <td className="px-5 py-6 text-[var(--muted)]" colSpan={5}>
-                    {isBatch ? "Recipient distribution is sealed." : "No public claim proofs have been recorded yet."}
+                  <td className="px-5 py-6 text-[var(--muted)]" colSpan={6}>
+                    {isBatch ? "No public rows yet." : "No proofs yet."}
                   </td>
                 </tr>
               )}
@@ -109,6 +107,9 @@ function ProofRow({ preview, index }: { preview: PublicRecipientPreview; index: 
           <span className="mono text-sm">{preview.maskedAddress}</span>
           <span className="rounded bg-[rgba(15,118,110,0.08)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--teal)]">MASKED</span>
         </div>
+      </td>
+      <td className="px-5 py-4">
+        <span className="observer-sealed-amount"><LockKeyhole size={14} aria-hidden="true" /> Sealed</span>
       </td>
       <td className="mono max-w-[260px] overflow-hidden text-ellipsis whitespace-nowrap px-5 py-4 text-sm text-[var(--muted)]">{preview.proofHash}</td>
       <td className="px-5 py-4">

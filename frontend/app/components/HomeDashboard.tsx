@@ -14,12 +14,12 @@ const productCards: Array<{ title: string; copy: string; icon: LucideIcon }> = [
     icon: Wallet,
   },
   {
-    title: "Bulk airdrops",
+    title: "Bulk payouts",
     copy: "Upload lists, validate wallets, and prepare sealed allocations.",
     icon: UploadCloud,
   },
   {
-    title: "Vested airdrops",
+    title: "Vested distributions",
     copy: "Set unlock schedules while amounts stay private.",
     icon: LockKeyhole,
   },
@@ -77,20 +77,20 @@ export default function HomeDashboard({ campaign }: { campaign: Campaign | null 
 
         <div className="overview-hero-copy">
           <span className="overview-eyebrow">TokenOps SDK</span>
-          <h1 id="hero-title">Production-ready private airdrops</h1>
-          <p>Launch claimable, bulk, and vested airdrops with sealed allocations.</p>
+          <h1 id="hero-title">Distribute tokens privately. Prove claims publicly.</h1>
+          <p>Launch private token distributions where recipients reveal only their own allocation and observers verify activity without seeing amounts.</p>
           <div className="overview-hero-actions">
             <Link className="button-primary" href="/admin">
-              Start Airdrop <ArrowRight size={16} aria-hidden="true" />
+              Start distribution <ArrowRight size={16} aria-hidden="true" />
             </Link>
           </div>
         </div>
 
-        <article className="overview-hero-panel" aria-label="Airdrop workspace preview">
+        <article className="overview-hero-panel" aria-label="Distribution workspace preview">
           <div className="overview-panel-top">
             <div>
-              <span>Airdrop workspace</span>
-              <strong>{campaign?.name ?? "No airdrop created"}</strong>
+              <span>Distribution workspace</span>
+              <strong>{campaign?.name ?? "No distribution created"}</strong>
             </div>
             <span className={hasCampaign ? "pill pill-live" : "pill pill-sealed"}>{campaign?.status ?? "setup"}</span>
           </div>
@@ -177,10 +177,10 @@ export default function HomeDashboard({ campaign }: { campaign: Campaign | null 
           <span className="ready-scan" />
         </div>
         <span className="section-label">Ready</span>
-        <h2 id="cta-title">Create a private airdrop.</h2>
+        <h2 id="cta-title">Create a private distribution.</h2>
         <div className="overview-cta-actions">
           <Link className="button-primary" href="/admin">
-            Start Airdrop <ArrowRight size={16} aria-hidden="true" />
+            Start distribution <ArrowRight size={16} aria-hidden="true" />
           </Link>
           {campaign ? (
             <Link className="button-secondary" href={`/observer/${campaign.id}`}>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ArrowRight, CalendarClock, CheckCircle2, Clock3, FileLock2, ShieldCheck, WalletCards } from "lucide-react";
+import { ArrowRight, CalendarClock, CheckCircle2, Clock3, ShieldCheck, WalletCards } from "lucide-react";
 import { useAccount } from "wagmi";
 import { maskAddress } from "@/lib/format";
 import type { Campaign } from "@/lib/types";
@@ -159,10 +159,6 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
     <section className="recipient-page recipient-page-clean" aria-labelledby="recipient-title">
       <div className="recipient-start panel">
         <div className="recipient-start-copy">
-          <span className="product-kicker">
-            <FileLock2 size={16} aria-hidden="true" />
-            Recipient
-          </span>
           <h1 id="recipient-title">{dashboardState.title}</h1>
           <p>{dashboardState.copy}</p>
         </div>
