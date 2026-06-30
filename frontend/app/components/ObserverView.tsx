@@ -26,7 +26,7 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
       <div className="observer-detail-stats" aria-label="Observer campaign facts">
         <DetailStat icon={<Users size={18} aria-hidden="true" />} label="Recipients" value={campaign.recipientCount.toLocaleString()} />
         <DetailStat icon={<FileCheck2 size={18} aria-hidden="true" />} label={isBatch ? "Mode" : "Proofs"} value={isBatch ? "Direct" : campaign.claimsCount.toLocaleString()} />
-        <DetailStat icon={<ShieldCheck size={18} aria-hidden="true" />} label={isBatch ? "Campaign" : "Airdrop"} value={campaign.airdropAddress ? maskAddress(campaign.airdropAddress) : isBatch ? "Batch disperse" : "Not created"} />
+        <DetailStat icon={<ShieldCheck size={18} aria-hidden="true" />} label={isBatch ? "Campaign" : "Distribution"} value={campaign.airdropAddress ? maskAddress(campaign.airdropAddress) : isBatch ? "Batch disperse" : "Not created"} />
         <DetailStat icon={<LockKeyhole size={18} aria-hidden="true" />} label="Token" value={maskAddress(campaign.tokenAddress)} />
       </div>
 

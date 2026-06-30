@@ -352,7 +352,7 @@ export default function AdminBuilder() {
   });
   const claimFactoryApproved = Boolean(claimFactoryApproval.data);
   const claimApprovalLabel = !claimFactoryAddress
-    ? "Airdrop factory unavailable"
+    ? "Distribution factory unavailable"
     : claimFactoryApproval.isError
       ? "Approval check failed"
       : claimFactoryApproved
@@ -638,11 +638,11 @@ export default function AdminBuilder() {
       return;
     }
     if (!canDeploy) {
-      setError("Complete configuration, token, and recipients before creating the airdrop.");
+      setError("Complete configuration, token, and recipients before creating the distribution.");
       return;
     }
     if (mode === "fund" && totalAmount <= 0n) {
-      setError("Add a positive allocation before creating and funding the airdrop.");
+      setError("Add a positive allocation before creating and funding the distribution.");
       return;
     }
 
@@ -667,7 +667,7 @@ export default function AdminBuilder() {
     };
 
     try {
-      setStatus(mode === "fund" ? "Creating and funding airdrop." : "Creating airdrop.");
+      setStatus(mode === "fund" ? "Creating and funding distribution." : "Creating distribution.");
       const result =
         mode === "fund"
           ? await createAndFund.mutateAsync({ params, userSalt, amount: totalAmount })
@@ -677,9 +677,9 @@ export default function AdminBuilder() {
       setClaimDeployment(deployment);
       await persistCampaign(result.airdrop);
       queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-airdrop"] });
-      setStatus(mode === "fund" ? "Airdrop created and funded. Sign claims next." : "Airdrop created. Fund it before signing claims.");
+      setStatus(mode === "fund" ? "Distribution created and funded. Sign claims next." : "Distribution created. Fund it before signing claims.");
     } catch (cause) {
-      setError(formatClaimFundingError(cause, "Airdrop creation failed"));
+      setError(formatClaimFundingError(cause, "Distribution creation failed"));
     }
   }
 
@@ -691,7 +691,7 @@ export default function AdminBuilder() {
       return;
     }
     if (!airdropContract) {
-      setError("Create the airdrop before funding it.");
+      setError("Create the distribution before funding it.");
       return;
     }
     if (!claimDeployment) {
@@ -699,12 +699,12 @@ export default function AdminBuilder() {
       return;
     }
     if (!recipientReady || totalAmount <= 0n) {
-      setError("Add valid recipients before funding the airdrop.");
+      setError("Add valid recipients before funding the distribution.");
       return;
     }
 
     try {
-      setStatus("Encrypting funding amount and funding airdrop.");
+      setStatus("Encrypting funding amount and funding distribution.");
       await fundAirdrop.mutateAsync({
         token: claimDeployment.params.token,
         params: claimDeployment.params,
@@ -716,7 +716,7 @@ export default function AdminBuilder() {
       });
       setFundedCampaign(true);
       queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-airdrop"] });
-      setStatus("Airdrop funded. Sign claim authorizations next.");
+      setStatus("Distribution funded. Sign claim authorizations next.");
     } catch (cause) {
       setError(formatClaimFundingError(cause, "Funding failed"));
     }
@@ -909,7 +909,7 @@ export default function AdminBuilder() {
     setError(null);
     const airdropContract = safeAddress(airdropAddress || savedCampaign?.airdropAddress || "");
     if (!airdropContract) {
-      setError("Create the airdrop before issuing claims.");
+      setError("Create the distribution before issuing claims.");
       return;
     }
     if (!savedCampaign) {
@@ -921,7 +921,7 @@ export default function AdminBuilder() {
       return;
     }
     if (!fundedCampaign) {
-      setError("Fund the airdrop before signing claim authorizations.");
+      setError("Fund the distribution before signing claim authorizations.");
       return;
     }
 
@@ -970,7 +970,7 @@ export default function AdminBuilder() {
       return;
     }
     if (!claimToken) {
-      setError("Set a valid token before approving the airdrop factory.");
+      setError("Set a valid token before approving the distribution factory.");
       return;
     }
     if (!publicClient || !walletClient.data) {
@@ -978,13 +978,13 @@ export default function AdminBuilder() {
       return;
     }
     if (!claimFactoryAddress) {
-      setError("Airdrop factory is not configured for this chain.");
+      setError("Distribution factory is not configured for this chain.");
       return;
     }
 
     try {
       setClaimApprovalPending(true);
-      setStatus("Approving airdrop factory as token operator.");
+      setStatus("Approving distribution factory as token operator.");
       const hash = await setOperator({
         publicClient,
         walletClient: walletClient.data,
@@ -995,9 +995,9 @@ export default function AdminBuilder() {
       await claimFactoryApproval.refetch();
       queryClient.invalidateQueries({ queryKey: ["phase", "claim-factory-operator"] });
       queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-airdrop"] });
-      setStatus(`Airdrop factory approval confirmed: ${maskAddress(hash)}.`);
+      setStatus(`Distribution factory approval confirmed: ${maskAddress(hash)}.`);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Airdrop factory approval failed");
+      setError(cause instanceof Error ? cause.message : "Distribution factory approval failed");
     } finally {
       setClaimApprovalPending(false);
     }
@@ -1344,7 +1344,7 @@ export default function AdminBuilder() {
                         </details>
                       </div>
                       <Field label="Drop name">
-                        <input className="input" placeholder="Private investor airdrop" value={campaignName} onChange={(event) => setCampaignName(event.target.value)} />
+                        <input className="input" placeholder="Private investor distribution" value={campaignName} onChange={(event) => setCampaignName(event.target.value)} />
                       </Field>
                       <div className="admin-field token-contract-field field-wide">
                         <label htmlFor="admin-token-contract">Token recipients claim</label>
@@ -1623,7 +1623,7 @@ export default function AdminBuilder() {
                       ) : null}
                       {showClaimCreateChoice ? (
                         <div className="admin-claim-create-choice field-wide">
-                          <div className="segmented-control admin-claim-create-toggle" aria-label="Airdrop creation mode">
+                          <div className="segmented-control admin-claim-create-toggle" aria-label="Distribution creation mode">
                             <button
                               className={claimCreateMode === "fund" ? "is-active" : ""}
                               type="button"

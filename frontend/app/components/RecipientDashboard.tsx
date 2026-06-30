@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowRight, CalendarClock, CheckCircle2, Clock3, ShieldCheck, WalletCards } from "lucide-react";
-import { useAccount } from "wagmi";
+import { useAccount, useWalletClient } from "wagmi";
 import { maskAddress } from "@/lib/format";
 import type { Campaign } from "@/lib/types";
 
@@ -18,17 +18,20 @@ type VestingCheck = {
 
 export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[] }) {
   const { address } = useAccount();
+  const { data: walletClient } = useWalletClient();
   const [claimChecks, setClaimChecks] = useState<Record<string, ClaimCheck>>({});
   const [vestingChecks, setVestingChecks] = useState<Record<string, VestingCheck>>({});
   const claimCampaigns = useMemo(() => campaigns.filter(isClaimCampaign), [campaigns]);
   const vestingCampaigns = useMemo(() => campaigns.filter(isVestingCampaign), [campaigns]);
 
   useEffect(() => {
-    if (!address || claimCampaigns.length === 0) {
+    if (!address || !walletClient || claimCampaigns.length === 0) {
       setClaimChecks({});
       return;
     }
 
+    const connectedAddress = address;
+    const connectedWallet = walletClient;
     const controller = new AbortController();
     setClaimChecks(
       Object.fromEntries(
@@ -44,7 +47,12 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
           }
 
           try {
-            const response = await fetch(`/api/campaigns/${campaign.id}/claim?recipient=${address}`, {
+            const signature = await connectedWallet.signMessage({
+              account: connectedAddress,
+              message: claimAccessMessage(campaign.id, connectedAddress),
+            });
+            const params = new URLSearchParams({ recipient: connectedAddress, signature });
+            const response = await fetch("/api/campaigns/" + campaign.id + "/claim?" + params.toString(), {
               cache: "no-store",
               signal: controller.signal,
             });
@@ -68,7 +76,7 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
 
     checkClaims();
     return () => controller.abort();
-  }, [address, claimCampaigns]);
+  }, [address, claimCampaigns, walletClient]);
 
   useEffect(() => {
     if (!address || vestingCampaigns.length === 0) {
@@ -299,6 +307,10 @@ function getDashboardState({
   if (claimedCount > 0) return { title: claimedCount === 1 ? "Already claimed." : "Claims complete.", copy: "No pending claim." };
   if (hasError) return { title: "Check failed.", copy: "Refresh or reconnect wallet." };
   return { title: "No match found.", copy: "No live claim or schedule for this wallet." };
+}
+
+function claimAccessMessage(campaignId: string, recipient: string): string {
+  return "Phase claim access\nCampaign: " + campaignId + "\nRecipient: " + recipient.toLowerCase();
 }
 
 function isClaimCampaign(campaign: Campaign): boolean {

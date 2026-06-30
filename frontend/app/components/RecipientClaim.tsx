@@ -32,6 +32,7 @@ type ClaimMarkState = "revealed" | "claimed";
 
 export default function RecipientClaim({ campaign }: { campaign: Campaign }) {
   const { address } = useAccount();
+  const { data: walletClient } = useWalletClient();
   const [claimPayload, setClaimPayload] = useState<ClaimPayload | null>(null);
   const [loadStatus, setLoadStatus] = useState<ClaimLoadStatus>("disconnected");
   const [loadMessage, setLoadMessage] = useState("Connect wallet.");
@@ -43,7 +44,7 @@ export default function RecipientClaim({ campaign }: { campaign: Campaign }) {
       if (!campaign.airdropAddress) {
         setClaimPayload(null);
         setLoadStatus("error");
-        setLoadMessage("Airdrop is not live.");
+        setLoadMessage("Distribution is not live.");
         return;
       }
 
@@ -54,10 +55,22 @@ export default function RecipientClaim({ campaign }: { campaign: Campaign }) {
         return;
       }
 
-      setLoadStatus("loading");
-      setLoadMessage("Checking claim.");
+      if (!walletClient) {
+        setClaimPayload(null);
+        setLoadStatus("loading");
+        setLoadMessage("Preparing wallet authorization.");
+        return;
+      }
 
-      const response = await fetch(`/api/campaigns/${campaign.id}/claim?recipient=${address}`, {
+      setLoadStatus("loading");
+      setLoadMessage("Authorize claim access.");
+
+      const signature = await walletClient.signMessage({
+        account: address,
+        message: claimAccessMessage(campaign.id, address),
+      });
+      const params = new URLSearchParams({ recipient: address, signature });
+      const response = await fetch("/api/campaigns/" + campaign.id + "/claim?" + params.toString(), {
         cache: "no-store",
         signal: controller.signal,
       });
@@ -83,7 +96,7 @@ export default function RecipientClaim({ campaign }: { campaign: Campaign }) {
     });
 
     return () => controller.abort();
-  }, [address, campaign.airdropAddress, campaign.id]);
+  }, [address, campaign.airdropAddress, campaign.id, walletClient]);
 
   return (
     <section className="recipient-claim-page" aria-labelledby="claim-title">
@@ -161,17 +174,23 @@ function ClaimFlow({ campaign, claimPayload, user }: { campaign: Campaign; claim
   const revealDone = allocation !== null || done;
 
   const markClaimState = useCallback(async (state: ClaimMarkState) => {
+    if (!walletClient) throw new Error("Wallet authorization is required.");
+    const signature = await walletClient.signMessage({
+      account: user,
+      message: claimAccessMessage(campaign.id, user),
+    });
+
     const response = await fetch(`/api/campaigns/${campaign.id}/claim`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ recipient: user, state }),
+      body: JSON.stringify({ recipient: user, state, signature }),
     });
 
     if (!response.ok) {
       const result = (await response.json().catch(() => null)) as { error?: string } | null;
       throw new Error(result?.error ?? `Could not mark claim ${state}`);
     }
-  }, [campaign.id, user]);
+  }, [campaign.id, user, walletClient]);
 
   const runPreflight = useCallback(async () => {
     if (!airdropClient) {
@@ -510,6 +529,10 @@ function readDecryptedValue(data: DecryptResult | undefined, handle: Hex): bigin
   if (typeof value === "number") return BigInt(value);
   if (typeof value === "string" && /^\d+$/.test(value)) return BigInt(value);
   return null;
+}
+
+function claimAccessMessage(campaignId: string, recipient: string): string {
+  return "Phase claim access\nCampaign: " + campaignId + "\nRecipient: " + recipient.toLowerCase();
 }
 
 function errorMessage(cause: unknown): string {

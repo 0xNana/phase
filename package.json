@@ -2,7 +2,7 @@
   "name": "phase",
   "version": "0.1.0",
   "private": true,
-  "description": "Confidential airdrop app for Zama Season 3 TokenOps bounty",
+  "description": "Confidential token distribution app for Zama Season 3 TokenOps bounty",
   "engines": {
     "node": ">=20",
     "pnpm": ">=10"
@@ -21,7 +21,7 @@
     "fhevm",
     "tokenops",
     "erc-7984",
-    "confidential-airdrop",
+    "confidential-distribution",
     "privacy"
   ],
   "license": "MIT",
