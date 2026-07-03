@@ -6,13 +6,11 @@ import { ArrowRight, Eye, Search, ShieldCheck } from "lucide-react";
 import { maskAddress } from "@/lib/format";
 import type { Campaign } from "@/lib/types";
 
-type ObserverFilter = "all" | "live" | "proofs" | "batch";
+type ObserverFilter = "all" | "live";
 
 const filterOptions: Array<{ id: ObserverFilter; label: string }> = [
   { id: "all", label: "All" },
   { id: "live", label: "Live" },
-  { id: "proofs", label: "Proofs" },
-  { id: "batch", label: "Batch" },
 ];
 
 export default function ObserverDashboard({ campaigns }: { campaigns: Campaign[] }) {
@@ -179,9 +177,7 @@ function formatDate(timestamp: number): string {
 
 function campaignMatchesFilter(campaign: Campaign, filter: ObserverFilter): boolean {
   if (filter === "all") return true;
-  if (filter === "live") return campaign.status === "live";
-  if (filter === "proofs") return campaign.claimsCount > 0 || campaign.previews.length > 0;
-  return campaign.kind === "batch";
+  return campaign.status === "live";
 }
 
 function progressPercent(claims: number, recipients: number): number {

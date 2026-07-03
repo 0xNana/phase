@@ -1960,6 +1960,25 @@ textarea:focus-visible {
   background: var(--surface-raised);
 }
 
+.observer-batch-note {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(15, 118, 110, 0.16);
+  border-radius: 8px;
+  background: rgba(239, 247, 246, 0.72);
+  color: var(--teal);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 780;
+}
+
+.observer-batch-note span {
+  color: var(--ink);
+}
+
 .observer-detail-table-header {
   display: flex;
   flex-wrap: wrap;

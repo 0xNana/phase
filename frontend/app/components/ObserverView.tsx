@@ -12,6 +12,31 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
   const statusLabel = observerStatusLabel(campaign);
   const distributionHref = campaign.airdropAddress ? explorerAddressUrl(campaign.airdropAddress) : undefined;
 
+  if (isBatch) {
+    return (
+      <section className="observer-detail panel overflow-hidden">
+        <div className="observer-detail-header">
+          <div>
+            <h1>{campaign.name}</h1>
+          </div>
+          <div className="observer-detail-status" aria-label="Observer status">
+            <span className={observerStatusPillClass(campaign)}>{statusLabel}</span>
+            <strong>{statusLabel}</strong>
+          </div>
+        </div>
+
+        <div className="observer-detail-stats" aria-label="Batch facts">
+          <DetailStat icon={<Users size={18} aria-hidden="true" />} label="Recipients" value={campaign.recipientCount.toLocaleString()} />
+        </div>
+
+        <div className="observer-batch-note">
+          <ShieldCheck size={17} aria-hidden="true" />
+          <span>Private batch disperse. Recipient list and amounts sealed.</span>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="observer-detail panel overflow-hidden">
       <div className="observer-detail-header">
@@ -20,26 +45,26 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
         </div>
         <div className="observer-detail-status" aria-label="Observer status">
           <span className={observerStatusPillClass(campaign)}>{statusLabel}</span>
-          <strong>{isBatch ? statusLabel : `${progress}% claimed`}</strong>
+          <strong>{`${progress}% claimed`}</strong>
         </div>
       </div>
 
       <div className="observer-detail-stats" aria-label="Observer campaign facts">
         <DetailStat icon={<Users size={18} aria-hidden="true" />} label="Events" value={proofRows.length.toLocaleString()} />
-        <DetailStat icon={<ShieldCheck size={18} aria-hidden="true" />} label={isBatch ? "Campaign" : "Distribution"} value={campaign.airdropAddress ? maskAddress(campaign.airdropAddress) : isBatch ? "Batch disperse" : "Not created"} href={distributionHref} />
+        <DetailStat icon={<ShieldCheck size={18} aria-hidden="true" />} label="Distribution" value={campaign.airdropAddress ? maskAddress(campaign.airdropAddress) : "Not created"} href={distributionHref} />
       </div>
 
       <section className="observer-detail-table">
         <div className="observer-detail-table-header">
           <div>
-            <h2>{isBatch ? "Distribution" : "Proofs"}</h2>
+            <h2>Proofs</h2>
           </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] border-collapse text-sm">
             <thead className="border-b border-[var(--line)] bg-[var(--surface-soft)] text-left text-xs font-bold uppercase text-[var(--muted)]">
               <tr>
-                <th className="px-5 py-3">{isBatch ? "Batch" : "Event"}</th>
+                <th className="px-5 py-3">Event</th>
                 <th className="px-5 py-3">Recipient</th>
                 <th className="px-5 py-3">Proof</th>
                 <th className="px-5 py-3">Status</th>
@@ -51,7 +76,7 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
               ) : (
                 <tr>
                   <td className="px-5 py-6 text-[var(--muted)]" colSpan={4}>
-                    {isBatch ? "No public rows yet." : "No proofs yet."}
+                    No proofs yet.
                   </td>
                 </tr>
               )}
