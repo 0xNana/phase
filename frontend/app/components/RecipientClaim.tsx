@@ -134,6 +134,13 @@ function ClaimFlow({ campaign, claimPayload, user }: { campaign: Campaign; claim
   );
 
   const done = markedClaimed || claimed.data === true;
+
+  useEffect(() => {
+    if (claimed.data !== true) return;
+    setMarkedClaimed(true);
+    setLastError(null);
+    setPreflightState({ status: "ready" });
+  }, [claimed.data]);
   const allocation = revealState.handle ? readDecryptedValue(decryptedClaim.data, revealState.handle) : null;
   const allocationLabel = allocation === null ? "Sealed" : `${formatTokenUnits(allocation)} cUSDC`;
   const revealBusy = claimAmount.isPending || (Boolean(revealState.handle) && decryptedClaim.isFetching && allocation === null);
@@ -230,7 +237,15 @@ function ClaimFlow({ campaign, claimPayload, user }: { campaign: Campaign; claim
       setMarkedClaimed(true);
       await queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-airdrop"] });
     } catch (cause) {
-      setLastError(errorMessage(cause));
+      const message = errorMessage(cause);
+      if (isAlreadyRedeemedError(message)) {
+        setMarkedClaimed(true);
+        setLastError(null);
+        setPreflightState({ status: "ready" });
+        await queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-airdrop"] });
+        return;
+      }
+      setLastError(message);
     }
   }
 
@@ -341,7 +356,7 @@ function ClaimGate({
       <div className={`recipient-claim-stage is-${state.stage}`}>
         <span className="recipient-claim-icon">{state.icon}</span>
         <div>
-          <span className="pill pill-watch">{state.kicker}</span>
+          {state.kicker ? <span className="pill pill-watch">{state.kicker}</span> : null}
           <h2>{state.title}</h2>
           <p>{loadMessage}</p>
         </div>
@@ -359,7 +374,7 @@ function getGateState(status: ClaimLoadStatus): { stage: "checking" | "blocked";
     return {
       stage: "checking",
       icon: <Loader2 size={34} className="animate-spin" aria-hidden="true" />,
-      kicker: "Checking",
+      kicker: "",
       title: "Checking claim",
       button: "Checking",
     };
@@ -386,7 +401,7 @@ function getStageCopy(stage: "done" | "ready" | "checking" | "blocked"): { icon:
   if (stage === "done") {
     return {
       icon: <CheckCircle2 size={34} aria-hidden="true" />,
-      kicker: "Done",
+      kicker: "",
       title: "Claim complete",
       copy: "Your claim is recorded.",
     };
@@ -394,7 +409,7 @@ function getStageCopy(stage: "done" | "ready" | "checking" | "blocked"): { icon:
   if (stage === "ready") {
     return {
       icon: <Send size={34} aria-hidden="true" />,
-      kicker: "Ready",
+      kicker: "",
       title: "Ready to claim",
       copy: "Confirm once in wallet.",
     };
@@ -402,7 +417,7 @@ function getStageCopy(stage: "done" | "ready" | "checking" | "blocked"): { icon:
   if (stage === "checking") {
     return {
       icon: <Loader2 size={34} className="animate-spin" aria-hidden="true" />,
-      kicker: "Checking",
+      kicker: "",
       title: "Checking claim",
       copy: "Verifying window, signature, and fee.",
     };
@@ -431,6 +446,10 @@ function readDecryptedValue(data: DecryptResult | undefined, handle: Hex): bigin
 
 function claimAccessMessage(campaignId: string, recipient: string): string {
   return "Phase claim access\nCampaign: " + campaignId + "\nRecipient: " + recipient.toLowerCase();
+}
+
+function isAlreadyRedeemedError(message: string): boolean {
+  return /already (been )?redeemed|already claimed|claim has already/i.test(message);
 }
 
 function errorMessage(cause: unknown): string {
