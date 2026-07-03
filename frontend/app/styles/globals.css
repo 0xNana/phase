@@ -1938,6 +1938,21 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 
+.observer-detail-stat a {
+  display: block;
+  overflow: hidden;
+  margin-top: 6px;
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 820;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.observer-detail-stat a:hover {
+  text-decoration: underline;
+}
+
 .observer-detail-table {
   overflow: hidden;
   border: 1px solid var(--line);

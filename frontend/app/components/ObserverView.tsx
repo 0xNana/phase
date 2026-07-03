@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ShieldCheck, Users } from "lucide-react";
 
+import { explorerAddressUrl } from "@/lib/env";
 import { maskAddress } from "@/lib/format";
 import type { Campaign, PublicRecipientPreview } from "@/lib/types";
 
@@ -9,6 +10,7 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
   const progress = progressPercent(campaign.claimsCount, campaign.recipientCount);
   const proofRows = campaign.previews;
   const statusLabel = observerStatusLabel(campaign);
+  const distributionHref = campaign.airdropAddress ? explorerAddressUrl(campaign.airdropAddress) : undefined;
 
   return (
     <section className="observer-detail panel overflow-hidden">
@@ -24,7 +26,7 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
 
       <div className="observer-detail-stats" aria-label="Observer campaign facts">
         <DetailStat icon={<Users size={18} aria-hidden="true" />} label="Events" value={proofRows.length.toLocaleString()} />
-        <DetailStat icon={<ShieldCheck size={18} aria-hidden="true" />} label={isBatch ? "Campaign" : "Distribution"} value={campaign.airdropAddress ? maskAddress(campaign.airdropAddress) : isBatch ? "Batch disperse" : "Not created"} />
+        <DetailStat icon={<ShieldCheck size={18} aria-hidden="true" />} label={isBatch ? "Campaign" : "Distribution"} value={campaign.airdropAddress ? maskAddress(campaign.airdropAddress) : isBatch ? "Batch disperse" : "Not created"} href={distributionHref} />
       </div>
 
       <section className="observer-detail-table">
@@ -77,13 +79,19 @@ function observerStatusPillClass(campaign: Campaign): string {
   return campaign.status === "live" ? "pill pill-live" : "pill pill-sealed";
 }
 
-function DetailStat({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+function DetailStat({ icon, label, value, href }: { icon: ReactNode; label: string; value: string; href?: string }) {
   return (
     <div className="observer-detail-stat">
       <span className="observer-detail-stat-icon">{icon}</span>
       <div>
         <span>{label}</span>
-        <strong>{value}</strong>
+        {href ? (
+          <a href={href} target="_blank" rel="noreferrer">
+            {value}
+          </a>
+        ) : (
+          <strong>{value}</strong>
+        )}
       </div>
     </div>
   );

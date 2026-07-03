@@ -27,3 +27,16 @@ export const tokenOpsFactoryAddress = safeAddress(
 export const phaseRegistryAddress = safeAddress(
   process.env.NEXT_PUBLIC_PHASE_REGISTRY_ADDRESS ?? "",
 );
+
+export const blockExplorerBaseUrl =
+  process.env.NEXT_PUBLIC_BLOCK_EXPLORER_URL?.trim().replace(/\/$/, "") || "https://sepolia.etherscan.io";
+
+export function explorerAddressUrl(address: string): string {
+  return `${blockExplorerBaseUrl}/address/${address}`;
+}
+
+export function explorerSearchUrl(value: string): string {
+  const query = encodeURIComponent(value);
+  const searchPrefix = blockExplorerBaseUrl.includes("etherscan.io") ? "f=0&" : "";
+  return `${blockExplorerBaseUrl}/search?${searchPrefix}q=${query}`;
+}
