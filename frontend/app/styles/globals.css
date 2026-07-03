@@ -81,7 +81,7 @@ a {
   z-index: 50;
   display: grid;
   grid-template-columns: minmax(240px, 1fr) auto minmax(190px, 1fr);
-  gap: 18px;
+  gap: 14px;
   align-items: center;
   min-height: 66px;
   padding: 10px 12px;
@@ -100,8 +100,8 @@ a {
 }
 
 .brand-logo {
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   flex: 0 0 auto;
   border-radius: 8px;
   box-shadow: 0 7px 18px rgba(104, 64, 198, 0.14);
@@ -114,7 +114,7 @@ a {
 }
 
 .brand-name {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 780;
   color: var(--ink);
 }
@@ -557,14 +557,14 @@ textarea:focus-visible {
     linear-gradient(0deg, rgba(104, 64, 198, 0.06) 1px, transparent 1px),
     linear-gradient(135deg, #ffffff, #eef7f5 58%, #f6f2ff);
   background-size: 44px 44px, 44px 44px, auto;
-  padding: clamp(24px, 4vw, 40px);
+  padding: clamp(18px, 3vw, 28px);
 }
 
 .recipient-hero h1 {
   max-width: 720px;
-  margin: 16px 0 0;
+  margin: 0;
   color: var(--ink);
-  font-size: clamp(34px, 4.6vw, 58px);
+  font-size: clamp(30px, 3.8vw, 46px);
   font-weight: 830;
   line-height: 0.98;
 }
@@ -671,8 +671,8 @@ textarea:focus-visible {
   border: 1px solid rgba(216, 225, 234, 0.94);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 12px 32px rgba(11, 28, 48, 0.055);
-  padding: 18px;
+  box-shadow: 0 8px 24px rgba(11, 28, 48, 0.045);
+  padding: 14px;
 }
 
 .recipient-campaign-top {
@@ -791,7 +791,7 @@ textarea:focus-visible {
 
 .recipient-start-copy h1 {
   max-width: 640px;
-  margin: 14px 0 0;
+  margin: 0;
   color: var(--ink);
   font-size: clamp(34px, 4vw, 48px);
   font-weight: 830;
@@ -948,7 +948,7 @@ textarea:focus-visible {
 }
 
 .recipient-claim-header h1 {
-  margin: 14px 0 0;
+  margin: 0;
   color: var(--ink);
   font-size: clamp(30px, 4vw, 44px);
   font-weight: 830;
@@ -1017,6 +1017,70 @@ textarea:focus-visible {
   line-height: 1.04;
 }
 
+.recipient-claim-title-row {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.recipient-claim-title-row h2 {
+  margin: 12px 0 0;
+}
+
+.recipient-claim-title-row.is-icon-only .recipient-claim-info {
+  margin-top: 0;
+}
+
+.recipient-claim-info {
+  display: grid;
+  position: relative;
+  width: 24px;
+  height: 24px;
+  margin-top: 12px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--muted);
+  cursor: help;
+}
+
+.recipient-claim-info:focus-visible {
+  outline: 2px solid rgba(15, 118, 110, 0.35);
+  outline-offset: 2px;
+}
+
+.recipient-claim-info::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 2;
+  width: min(260px, 72vw);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  border: 1px solid rgba(8, 23, 39, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 10px 26px rgba(11, 28, 48, 0.14);
+  color: var(--ink);
+  padding: 9px 10px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 720;
+  line-height: 1.4;
+}
+
+.recipient-claim-info:hover::after,
+.recipient-claim-info:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .recipient-claim-stage p {
   max-width: 360px;
   margin: 8px auto 0;
@@ -1043,6 +1107,54 @@ textarea:focus-visible {
   font-size: 13px;
   font-weight: 720;
   line-height: 1.4;
+}
+
+.recipient-claim-focus {
+  display: grid;
+  width: min(100%, 520px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.recipient-claim-focus-row {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+  text-align: left;
+}
+
+.recipient-claim-focus.is-revealed .recipient-claim-focus-row:first-child {
+  border-color: rgba(20, 122, 80, 0.24);
+  background: rgba(20, 122, 80, 0.05);
+}
+
+.recipient-claim-focus-row span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 780;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.recipient-claim-focus-row strong {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 840;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recipient-claim-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
 }
 
 .recipient-simple-steps,
@@ -1215,6 +1327,34 @@ textarea:focus-visible {
     align-items: flex-start;
   }
 
+  .recipient-claim-title-row {
+    align-items: flex-start;
+  }
+
+  .recipient-claim-info::after {
+    right: auto;
+    left: 50%;
+    transform: translate(-50%, 4px);
+  }
+
+  .recipient-claim-info:hover::after,
+  .recipient-claim-info:focus-visible::after {
+    transform: translate(-50%, 0);
+  }
+
+  .recipient-claim-focus {
+    grid-template-columns: 1fr;
+  }
+
+  .recipient-claim-actions {
+    width: 100%;
+  }
+
+  .recipient-claim-actions .button-primary,
+  .recipient-claim-actions .button-secondary {
+    width: 100%;
+  }
+
   .recipient-reveal-panel {
     align-items: stretch;
     flex-direction: column;
@@ -1244,7 +1384,7 @@ textarea:focus-visible {
     linear-gradient(0deg, rgba(15, 118, 110, 0.06) 1px, transparent 1px),
     linear-gradient(135deg, #ffffff, #f1f7f7 58%, #f8f5ed);
   background-size: 44px 44px, 44px 44px, auto;
-  padding: clamp(24px, 4vw, 40px);
+  padding: clamp(18px, 3vw, 28px);
 }
 
 .observer-hero-clean {
@@ -1253,9 +1393,9 @@ textarea:focus-visible {
 
 .observer-hero h1 {
   max-width: 720px;
-  margin: 16px 0 0;
+  margin: 0;
   color: var(--ink);
-  font-size: clamp(34px, 4.6vw, 58px);
+  font-size: clamp(30px, 3.8vw, 46px);
   font-weight: 830;
   line-height: 0.98;
 }
@@ -1272,7 +1412,7 @@ textarea:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 22px;
+  margin-top: 14px;
 }
 
 .observer-hero-proofbar span {
@@ -1291,10 +1431,10 @@ textarea:focus-visible {
 
 .observer-toolbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto auto;
-  gap: 14px;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 12px;
   align-items: center;
-  padding: 14px;
+  padding: 12px;
 }
 
 .observer-search {
@@ -1308,7 +1448,7 @@ textarea:focus-visible {
 
 .observer-filterbar {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   min-width: 330px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -1389,14 +1529,14 @@ textarea:focus-visible {
 .observer-campaign-card {
   position: relative;
   display: grid;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
   border: 1px solid rgba(216, 225, 234, 0.94);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.96);
   color: inherit;
-  box-shadow: 0 12px 32px rgba(11, 28, 48, 0.055);
-  padding: 18px;
+  box-shadow: 0 8px 24px rgba(11, 28, 48, 0.045);
+  padding: 14px;
   text-decoration: none;
   transition:
     transform 160ms ease,
@@ -1407,7 +1547,7 @@ textarea:focus-visible {
 .observer-campaign-card:hover,
 .observer-campaign-card:focus-visible {
   border-color: rgba(104, 64, 198, 0.32);
-  box-shadow: 0 18px 38px rgba(11, 28, 48, 0.1);
+  box-shadow: 0 12px 28px rgba(11, 28, 48, 0.085);
   outline: 0;
   transform: translateY(-2px);
 }
@@ -1430,7 +1570,7 @@ textarea:focus-visible {
 .observer-campaign-card h2 {
   margin: 0;
   color: var(--ink);
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 830;
   line-height: 1.12;
 }
@@ -1438,9 +1578,9 @@ textarea:focus-visible {
 .observer-campaign-main > div > span {
   display: block;
   overflow: hidden;
-  margin-top: 7px;
+  margin-top: 5px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 720;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1515,15 +1655,13 @@ textarea:focus-visible {
 
 .observer-proof-preview {
   display: grid;
-  grid-template-columns: 18px minmax(80px, 0.6fr) minmax(96px, 1fr);
+  grid-template-columns: 18px minmax(88px, 0.8fr) minmax(96px, 1fr);
   gap: 8px;
   align-items: center;
   min-width: 0;
-  border: 1px solid rgba(15, 118, 110, 0.16);
-  border-radius: 8px;
-  background: rgba(239, 247, 246, 0.72);
+  border-top: 1px solid var(--line);
   color: var(--teal);
-  padding: 10px;
+  padding: 10px 0 0;
 }
 
 .observer-proof-preview strong,
@@ -1702,8 +1840,8 @@ textarea:focus-visible {
 
 .observer-detail {
   display: grid;
-  gap: 18px;
-  padding: clamp(18px, 3vw, 28px);
+  gap: 14px;
+  padding: clamp(16px, 2.4vw, 24px);
 }
 
 .observer-detail-header {
@@ -1714,9 +1852,9 @@ textarea:focus-visible {
 }
 
 .observer-detail-header h1 {
-  margin: 14px 0 0;
+  margin: 0;
   color: var(--ink);
-  font-size: clamp(28px, 3.2vw, 42px);
+  font-size: clamp(26px, 2.8vw, 36px);
   font-weight: 830;
   line-height: 1.02;
 }
@@ -1731,11 +1869,11 @@ textarea:focus-visible {
 
 .observer-detail-status {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-soft);
-  padding: 14px;
+  padding: 12px;
 }
 
 .observer-detail-status strong {
@@ -1752,7 +1890,7 @@ textarea:focus-visible {
 
 .observer-detail-stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1814,7 +1952,7 @@ textarea:focus-visible {
   justify-content: space-between;
   gap: 12px;
   border-bottom: 1px solid var(--line);
-  padding: 16px 18px;
+  padding: 12px 14px;
 }
 
 .observer-detail-table-header h2 {
@@ -2553,7 +2691,7 @@ textarea:focus-visible {
   min-height: 106px;
   align-content: center;
   background: var(--navy);
-  padding: 20px;
+  padding: 16px;
 }
 
 .overview-campaign-metric strong {
@@ -3047,7 +3185,7 @@ textarea:focus-visible {
     linear-gradient(0deg, rgba(104, 64, 198, 0.055) 1px, transparent 1px),
     linear-gradient(135deg, #ffffff, #eef7f5 58%, #f7f2ff);
   background-size: auto, 44px 44px, 44px 44px, auto;
-  padding: clamp(24px, 4vw, 40px);
+  padding: clamp(18px, 3vw, 28px);
 }
 
 .faucet-hero-clean {
@@ -3056,9 +3194,9 @@ textarea:focus-visible {
 
 .faucet-hero h1 {
   max-width: 760px;
-  margin: 16px 0 0;
+  margin: 10px 0 0;
   color: var(--ink);
-  font-size: clamp(34px, 4.6vw, 58px);
+  font-size: clamp(30px, 3.8vw, 46px);
   font-weight: 830;
   line-height: 0.98;
 }
@@ -3091,17 +3229,17 @@ textarea:focus-visible {
 
 .faucet-card-header {
   display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
-  margin-bottom: 16px;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
 }
 
 
 .faucet-card-icon {
   display: grid;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   place-items: center;
   border: 1px solid rgba(15, 118, 110, 0.2);
   border-radius: 8px;
@@ -3110,9 +3248,9 @@ textarea:focus-visible {
 }
 
 .faucet-card-header h2 {
-  margin: 5px 0 0;
+  margin: 4px 0 0;
   color: var(--ink);
-  font-size: 23px;
+  font-size: 20px;
   font-weight: 830;
   line-height: 1.1;
 }
@@ -3136,7 +3274,7 @@ textarea:focus-visible {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface-raised);
-  padding: 11px;
+  padding: 10px;
 }
 
 .faucet-fact span {
@@ -3162,7 +3300,7 @@ textarea:focus-visible {
 .faucet-action-panel {
   display: grid;
   gap: 12px;
-  margin-top: 16px;
+  margin-top: 14px;
 }
 
 .faucet-actions {
@@ -3541,10 +3679,10 @@ textarea:focus-visible {
 }
 
 .admin-envelope-header {
-  display: flex;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  gap: 12px;
   align-items: start;
-  justify-content: space-between;
   border-bottom: 1px solid var(--line);
   padding-bottom: 16px;
 }
@@ -3559,7 +3697,6 @@ textarea:focus-visible {
 
 .admin-envelope-title-block {
   display: grid;
-  flex: 1;
   min-width: 0;
 }
 

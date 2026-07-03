@@ -6,12 +6,19 @@ import type { CampaignInput, CampaignKind, CampaignStatus } from "@/lib/types";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const campaigns = await listCampaigns();
-  return NextResponse.json({ campaigns });
+  try {
+    const campaigns = await listCampaigns();
+    return NextResponse.json({ campaigns });
+  } catch (cause) {
+    return storageErrorResponse(cause, "Could not load campaigns");
+  }
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as Partial<CampaignInput>;
+  const body = (await request.json().catch(() => null)) as Partial<CampaignInput> | null;
+  if (!body) {
+    return NextResponse.json({ error: "Valid campaign JSON is required" }, { status: 400 });
+  }
   const campaignKind: CampaignKind =
     body.kind === "batch" || body.kind === "vesting" || body.kind === "claim" ? body.kind : "claim";
 
@@ -28,22 +35,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Valid start and end dates are required" }, { status: 400 });
   }
 
-  const campaign = await createCampaign({
-    name: body.name,
-    kind: campaignKind,
-    tokenAddress: body.tokenAddress,
-    airdropAddress: body.airdropAddress,
-    creator: body.creator,
-    startTimestamp: body.startTimestamp,
-    endTimestamp: body.endTimestamp,
-    recipientCount: Number(body.recipientCount ?? 0),
-    status: parseCampaignStatus(body.status),
-    metadataUri: body.metadataUri,
-  });
+  try {
+    const campaign = await createCampaign({
+      name: body.name,
+      kind: campaignKind,
+      tokenAddress: body.tokenAddress,
+      airdropAddress: body.airdropAddress,
+      creator: body.creator,
+      startTimestamp: body.startTimestamp,
+      endTimestamp: body.endTimestamp,
+      recipientCount: Number(body.recipientCount ?? 0),
+      status: parseCampaignStatus(body.status),
+      metadataUri: body.metadataUri,
+    });
 
-  return NextResponse.json({ campaign }, { status: 201 });
+    return NextResponse.json({ campaign }, { status: 201 });
+  } catch (cause) {
+    return storageErrorResponse(cause, "Could not save campaign");
+  }
 }
 
 function parseCampaignStatus(value: unknown): CampaignStatus | undefined {
   return value === "draft" || value === "deploying" || value === "live" || value === "ended" ? value : undefined;
+}
+
+function storageErrorResponse(cause: unknown, fallback: string) {
+  const detail = cause instanceof Error ? cause.message : fallback;
+  return NextResponse.json({ error: detail }, { status: 500 });
 }

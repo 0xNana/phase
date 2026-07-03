@@ -44,8 +44,8 @@ export default function CampaignSummary({ campaign }: { campaign: Campaign }) {
       <section className="panel p-5">
         <h2 className="font-bold">Open</h2>
         <div className="mt-4 grid gap-2">
-          <Link className="button-secondary justify-between" href={`/claim/${campaign.id}`}>
-            Claim <ArrowRight size={15} aria-hidden="true" />
+          <Link className="button-secondary justify-between" href="/recipient">
+            Recipient <ArrowRight size={15} aria-hidden="true" />
           </Link>
           <Link className="button-secondary justify-between" href={`/observer/${campaign.id}`}>
             Observe <ArrowRight size={15} aria-hidden="true" />

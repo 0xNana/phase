@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowRight, CalendarClock, CheckCircle2, Clock3, ShieldCheck, WalletCards } from "lucide-react";
 import { useAccount, useWalletClient } from "wagmi";
 import { maskAddress } from "@/lib/format";
-import type { Campaign } from "@/lib/types";
+import type { Campaign, ClaimPayload } from "@/lib/types";
 
 type ClaimCheck = {
   status: "checking" | "ready" | "claimed" | "missing" | "error";
@@ -21,11 +21,19 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
   const { data: walletClient } = useWalletClient();
   const [claimChecks, setClaimChecks] = useState<Record<string, ClaimCheck>>({});
   const [vestingChecks, setVestingChecks] = useState<Record<string, VestingCheck>>({});
+  const [checkRequested, setCheckRequested] = useState(false);
+  const [checkAttempt, setCheckAttempt] = useState(0);
   const claimCampaigns = useMemo(() => campaigns.filter(isClaimCampaign), [campaigns]);
   const vestingCampaigns = useMemo(() => campaigns.filter(isVestingCampaign), [campaigns]);
 
   useEffect(() => {
-    if (!address || !walletClient || claimCampaigns.length === 0) {
+    setCheckRequested(false);
+    setClaimChecks({});
+    setVestingChecks({});
+  }, [address]);
+
+  useEffect(() => {
+    if (!address || !walletClient || claimCampaigns.length === 0 || !checkRequested) {
       setClaimChecks({});
       return;
     }
@@ -57,7 +65,8 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
               signal: controller.signal,
             });
             if (response.ok) {
-              const result = (await response.json().catch(() => null)) as { claim?: { claimedAt?: string } } | null;
+              const result = (await response.json().catch(() => null)) as { claim?: ClaimPayload } | null;
+              if (result?.claim) storeCheckedClaim(result.claim);
               return [campaign.id, result?.claim?.claimedAt ? { status: "claimed", message: "Claimed" } : { status: "ready", message: "Ready" }];
             }
             if (response.status === 404) return [campaign.id, { status: "missing", message: "No claim" }];
@@ -76,10 +85,10 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
 
     checkClaims();
     return () => controller.abort();
-  }, [address, claimCampaigns, walletClient]);
+  }, [address, claimCampaigns, walletClient, checkRequested, checkAttempt]);
 
   useEffect(() => {
-    if (!address || vestingCampaigns.length === 0) {
+    if (!address || vestingCampaigns.length === 0 || !checkRequested) {
       setVestingChecks({});
       return;
     }
@@ -127,7 +136,7 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
 
     checkVestings();
     return () => controller.abort();
-  }, [address, vestingCampaigns]);
+  }, [address, vestingCampaigns, checkRequested, checkAttempt]);
 
   const readyCampaigns = useMemo(
     () => claimCampaigns.filter((campaign) => claimChecks[campaign.id]?.status === "ready"),
@@ -143,6 +152,7 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
   );
   const checking =
     Boolean(address) &&
+    checkRequested &&
     (claimCampaigns.some((campaign) => claimChecks[campaign.id]?.status === "checking") ||
       vestingCampaigns.some((campaign) => vestingChecks[campaign.id]?.status === "checking"));
   const primaryCampaign = readyCampaigns[0] ?? claimCampaigns[0] ?? null;
@@ -156,12 +166,31 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
     readyVestingCount: readyVestingCampaigns.length,
     claimedCount: claimedCampaigns.length,
     checking,
+    checked: checkRequested,
     hasError:
       Object.values(claimChecks).some((check) => check.status === "error") ||
       Object.values(vestingChecks).some((check) => check.status === "error"),
   });
   const hasReadyClaim = Boolean(primaryCampaign && primaryCheck?.status === "ready");
   const hasReadyVesting = Boolean(primaryVestingCampaign && primaryVestingCheck?.status === "ready");
+  const canCheck = Boolean(address && walletClient && !checking && (claimCampaigns.length > 0 || vestingCampaigns.length > 0));
+  const requestCheck = () => {
+    setCheckRequested(true);
+    setCheckAttempt((attempt) => attempt + 1);
+  };
+  const checkValue = !address
+    ? "Waiting"
+    : checking
+      ? "Checking"
+      : readyCampaigns.length > 0
+        ? "Claim ready"
+        : readyVestingCampaigns.length > 0
+          ? "Vesting ready"
+          : claimedCampaigns.length > 0
+            ? "Claimed"
+            : checkRequested
+              ? "No match"
+              : "Check";
 
   return (
     <section className="recipient-page recipient-page-clean" aria-labelledby="recipient-title">
@@ -180,21 +209,9 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
           />
           <RecipientStep
             icon={checking ? <Clock3 size={18} aria-hidden="true" /> : readyCampaigns.length > 0 || readyVestingCampaigns.length > 0 || claimedCampaigns.length > 0 ? <CheckCircle2 size={18} aria-hidden="true" /> : <ShieldCheck size={18} aria-hidden="true" />}
-            label="Wallet check"
-            value={
-              !address
-                ? "Waiting"
-                : checking
-                  ? "Checking"
-                  : readyCampaigns.length > 0
-                    ? "Claim ready"
-                    : readyVestingCampaigns.length > 0
-                      ? "Vesting ready"
-                      : claimedCampaigns.length > 0
-                        ? "Claimed"
-                        : "No match"
-            }
-            state={!address ? "idle" : readyCampaigns.length > 0 || readyVestingCampaigns.length > 0 || claimedCampaigns.length > 0 ? "done" : checking ? "active" : "idle"}
+            label="Check"
+            value={checkValue}
+            state={!address ? "idle" : readyCampaigns.length > 0 || readyVestingCampaigns.length > 0 || claimedCampaigns.length > 0 ? "done" : checking ? "active" : checkRequested ? "done" : "active"}
           />
           <RecipientStep
             icon={readyCampaigns.length > 0 || readyVestingCampaigns.length > 0 ? <ArrowRight size={18} aria-hidden="true" /> : claimedCampaigns.length > 0 ? <CheckCircle2 size={18} aria-hidden="true" /> : <Clock3 size={18} aria-hidden="true" />}
@@ -212,8 +229,8 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
               Open vesting <ArrowRight size={16} aria-hidden="true" />
             </Link>
           ) : (
-            <button className="button-secondary recipient-primary-action" type="button" disabled>
-              {address ? (checking ? "Checking" : claimedCampaigns.length > 0 ? "Already claimed" : "No match found") : "Connect wallet"}
+            <button className="button-secondary recipient-primary-action" type="button" disabled={!canCheck} onClick={requestCheck}>
+              {!address ? "Connect wallet" : checking ? "Checking" : claimedCampaigns.length > 0 ? "Already claimed" : checkRequested ? "Check again" : "Check"}
             </button>
           )}
         </div>
@@ -285,6 +302,7 @@ function getDashboardState({
   readyVestingCount,
   claimedCount,
   checking,
+  checked,
   hasError,
 }: {
   connected: boolean;
@@ -293,13 +311,15 @@ function getDashboardState({
   readyVestingCount: number;
   claimedCount: number;
   checking: boolean;
+  checked: boolean;
   hasError: boolean;
 }): { title: string; copy: string } {
   const readyCount = readyClaimCount + readyVestingCount;
 
   if (!campaignCount) return { title: "No distributions yet.", copy: "Live claims and schedules appear here." };
-  if (!connected) return { title: "Connect wallet.", copy: "Matching claims and schedules appear automatically." };
+  if (!connected) return { title: "Connect wallet.", copy: "Check eligibility for live claims and schedules." };
   if (checking) return { title: "Checking wallet.", copy: "Matching this wallet." };
+  if (!checked) return { title: "Check eligibility.", copy: "Use Check before opening a claim." };
   if (readyCount > 0) {
     if (readyClaimCount > 0) return { title: readyClaimCount === 1 ? "Claim ready." : `${readyClaimCount} claims ready.`, copy: "Open the claim and confirm." };
     return { title: readyVestingCount === 1 ? "Vesting ready." : `${readyVestingCount} vesting schedules ready.`, copy: "Open vesting as tokens unlock." };
@@ -319,4 +339,13 @@ function isClaimCampaign(campaign: Campaign): boolean {
 
 function isVestingCampaign(campaign: Campaign): boolean {
   return campaign.kind === "vesting";
+}
+
+function checkedClaimStorageKey(campaignId: string, recipient: string): string {
+  return `phase:checked-claim:${campaignId}:${recipient.toLowerCase()}`;
+}
+
+function storeCheckedClaim(claim: ClaimPayload): void {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(checkedClaimStorageKey(claim.campaignId, claim.recipient), JSON.stringify(claim));
 }

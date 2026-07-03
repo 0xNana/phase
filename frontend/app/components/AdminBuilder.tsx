@@ -74,9 +74,9 @@ type BatchStrategy = "auto" | "fixed" | "manual";
 type ClaimCreateMode = "fund" | "deploy";
 type LaunchStep = "details" | "recipients" | "review" | "flow";
 const launchProgressByStep: Record<LaunchStep, number> = {
-  details: 25,
-  recipients: 55,
-  review: 78,
+  details: 0,
+  recipients: 33,
+  review: 67,
   flow: 100,
 };
 
@@ -91,6 +91,29 @@ type ClaimDeployment = {
   deployer: Address;
   gasFee: bigint;
 };
+
+async function readJsonResponse<T>(response: Response): Promise<T | null> {
+  const text = await response.text();
+  if (!text.trim()) return null;
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
+
+function claimIssueErrorMessage(cause: unknown): string {
+  const message = cause instanceof Error ? cause.message : "Claim issuing failed";
+  const isRelayerFetchFailure =
+    message.includes("relayer.testnet.zama.org") &&
+    message.includes("input-proof") &&
+    message.includes("Failed to fetch");
+
+  if (!isRelayerFetchFailure) return message;
+
+  return "Could not reach the Zama testnet relayer while creating the input proof. Check your network, VPN or ad blocker, and Sepolia RPC, then try issuing claims again.";
+}
 
 const campaignKinds: Array<{ id: CampaignKind; label: string }> = [
   { id: "claim", label: "Claim" },
@@ -420,7 +443,7 @@ export default function AdminBuilder() {
   const progressPercent = issueProgress.total > 0 ? Math.round((issueProgress.done / issueProgress.total) * 100) : 0;
   const vestingProgressPercent = vestingProgress.total > 0 ? Math.round((vestingProgress.done / vestingProgress.total) * 100) : 0;
   const claimPayloadReady = issueProgress.total > 0 && issueProgress.done === issueProgress.total;
-  const claimPortalHref = savedCampaign ? `/claim/${savedCampaign.id}` : "";
+  const claimPortalHref = savedCampaign ? "/recipient" : "";
   const resolvedClaimGasFee = factoryCustomFee.data?.enabled ? factoryCustomFee.data.gasFee : factoryDefaultGasFee.data;
   const claimFeeReady = resolvedClaimGasFee !== undefined && (!address || Boolean(factoryCustomFee.data) || !factoryCustomFee.isLoading);
   const canDeploy =
@@ -580,8 +603,8 @@ export default function AdminBuilder() {
         metadataUri,
       }),
     });
-    const result = (await response.json()) as { campaign?: Campaign; error?: string };
-    if (!response.ok || !result.campaign) throw new Error(result.error ?? "Could not save campaign");
+    const result = await readJsonResponse<{ campaign?: Campaign; error?: string }>(response);
+    if (!response.ok || !result?.campaign) throw new Error(result?.error ?? "Could not save campaign");
     setSavedCampaign(result.campaign);
     return result.campaign;
   }
@@ -592,8 +615,8 @@ export default function AdminBuilder() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ status: nextStatus }),
     });
-    const result = (await response.json()) as { campaign?: Campaign; error?: string };
-    if (!response.ok || !result.campaign) throw new Error(result.error ?? "Could not update campaign status");
+    const result = await readJsonResponse<{ campaign?: Campaign; error?: string }>(response);
+    if (!response.ok || !result?.campaign) throw new Error(result?.error ?? "Could not update campaign status");
 
     setSavedCampaign(result.campaign);
     return result.campaign;
@@ -627,8 +650,8 @@ export default function AdminBuilder() {
         })),
       }),
     });
-    const result = (await response.json()) as { error?: string };
-    if (!response.ok) throw new Error(result.error ?? "Could not save vesting schedules");
+    const result = await readJsonResponse<{ error?: string }>(response);
+    if (!response.ok) throw new Error(result?.error ?? "Could not save vesting schedules");
   }
 
   async function deployCampaign(mode: "deploy" | "fund") {
@@ -677,7 +700,7 @@ export default function AdminBuilder() {
       setClaimDeployment(deployment);
       await persistCampaign(result.airdrop);
       queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-airdrop"] });
-      setStatus(mode === "fund" ? "Distribution created and funded. Sign claims next." : "Distribution created. Fund it before signing claims.");
+      setStatus(mode === "fund" ? "Distribution created and funded. Sign authorizations next." : "Distribution created. Fund it before signing authorizations.");
     } catch (cause) {
       setError(formatClaimFundingError(cause, "Distribution creation failed"));
     }
@@ -716,7 +739,7 @@ export default function AdminBuilder() {
       });
       setFundedCampaign(true);
       queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-airdrop"] });
-      setStatus("Distribution funded. Sign claim authorizations next.");
+      setStatus("Distribution funded. Sign authorizations next.");
     } catch (cause) {
       setError(formatClaimFundingError(cause, "Funding failed"));
     }
@@ -952,14 +975,14 @@ export default function AdminBuilder() {
           }),
         });
         if (!response.ok) {
-          const result = (await response.json()) as { error?: string };
-          throw new Error(result.error ?? `Could not store payload for ${row.address}`);
+          const result = await readJsonResponse<{ error?: string }>(response);
+          throw new Error(result?.error ?? `Could not store payload for ${row.address}`);
         }
         setIssueProgress({ done: i + 1, total: parsed.rows.length });
       }
       setStatus(campaignKind === "vesting" ? "Vesting inputs issued." : "Claim authorizations signed. Recipient portal is ready.");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Claim issuing failed");
+      setError(claimIssueErrorMessage(cause));
     }
   }
 
@@ -1658,7 +1681,7 @@ export default function AdminBuilder() {
                       {showClaimSignAction ? (
                         <button className="button-primary" type="button" disabled={busy || !canSignClaims} onClick={issueClaims}>
                           <KeyRound size={16} aria-hidden="true" />
-                          Seal claims
+                          Sign authorizations
                         </button>
                       ) : null}
                       {showClaimPortalAction ? (
@@ -1682,7 +1705,7 @@ export default function AdminBuilder() {
                     {issueProgress.total > 0 ? (
                       <div className="progress-block">
                         <div>
-                          <span>Signature Progress</span>
+                          <span>Authorization progress</span>
                           <strong>{progressPercent}%</strong>
                         </div>
                         <div className="progress-track">

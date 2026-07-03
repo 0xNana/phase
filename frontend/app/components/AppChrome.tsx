@@ -11,35 +11,30 @@ import WalletDropdown from "./WalletDropdown";
 const navLinks: Array<{
   href: string;
   label: string;
-  description: string;
   icon: LucideIcon;
   match: (pathname: string) => boolean;
 }> = [
   {
     href: "/",
     label: "Home",
-    description: "Overview",
     icon: Home,
     match: (pathname) => pathname === "/",
   },
   {
     href: "/admin",
     label: "Admin",
-    description: "Drops",
     icon: Send,
     match: (pathname) => pathname.startsWith("/admin"),
   },
   {
     href: "/recipient",
     label: "Recipient",
-    description: "Claims",
     icon: UserCheck,
     match: (pathname) => pathname.startsWith("/recipient") || pathname.startsWith("/claim"),
   },
   {
     href: "/observer",
     label: "Observer",
-    description: "Proofs",
     icon: Eye,
     match: (pathname) => pathname.startsWith("/observer"),
   },
@@ -145,7 +140,6 @@ export default function AppChrome({ children }: { children: React.ReactNode; cam
               key={link.href}
               href={link.href}
               label={link.label}
-              description={link.description}
               icon={link.icon}
               active={link.match(pathname)}
               collapsed={sidebarCollapsed}
@@ -170,8 +164,7 @@ export default function AppChrome({ children }: { children: React.ReactNode; cam
                   key={link.href}
                   href={link.href}
                   label={link.label}
-                  description={link.description}
-                  icon={link.icon}
+                      icon={link.icon}
                   active={link.match(pathname)}
                   onClick={() => setMobileOpen(false)}
                 />
@@ -262,14 +255,12 @@ function BrandLink({ compact }: { compact: boolean }) {
 function SidebarLink({
   href,
   label,
-  description,
   icon: Icon,
   active,
   collapsed,
 }: {
   href: string;
   label: string;
-  description: string;
   icon: LucideIcon;
   active: boolean;
   collapsed: boolean;
@@ -286,7 +277,6 @@ function SidebarLink({
       </span>
       <span className="sidebar-link-copy">
         <span className="sidebar-link-label">{label}</span>
-        <span className="sidebar-link-description">{description}</span>
       </span>
     </Link>
   );
@@ -295,14 +285,12 @@ function SidebarLink({
 function MobileNavLink({
   href,
   label,
-  description,
   icon: Icon,
   active,
   onClick,
 }: {
   href: string;
   label: string;
-  description: string;
   icon: LucideIcon;
   active: boolean;
   onClick: () => void;
@@ -313,7 +301,6 @@ function MobileNavLink({
         <Icon size={18} aria-hidden="true" />
         <span>
           <span className="mobile-nav-link-label">{label}</span>
-          <span className="mobile-nav-link-description">{description}</span>
         </span>
       </span>
       <span aria-hidden="true">-&gt;</span>

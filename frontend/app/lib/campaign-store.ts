@@ -146,7 +146,6 @@ async function loadPreviewsForCampaigns(campaignIds: string[]): Promise<Map<stri
 
   for (const row of (data ?? []) as PreviewRow[]) {
     const current = previewsByCampaign.get(row.campaign_id) ?? [];
-    if (current.length >= 8) continue;
     current.push(mapPreview(row));
     previewsByCampaign.set(row.campaign_id, current);
   }
@@ -173,20 +172,6 @@ async function upsertPreview(campaignId: string, address: string, status: Public
 
   if (error) throw new Error(error.message);
 
-  const { data: overflowRows, error: overflowError } = await supabase
-    .from("campaign_previews")
-    .select("id")
-    .eq("campaign_id", campaignId)
-    .order("updated_at", { ascending: false })
-    .range(8, 1000);
-
-  if (overflowError) throw new Error(overflowError.message);
-
-  const overflowIds = (overflowRows ?? []).map((row) => row.id as number);
-  if (overflowIds.length === 0) return;
-
-  const { error: deleteError } = await supabase.from("campaign_previews").delete().in("id", overflowIds);
-  if (deleteError) throw new Error(deleteError.message);
 }
 
 async function uniqueCampaignId(name: string): Promise<string> {

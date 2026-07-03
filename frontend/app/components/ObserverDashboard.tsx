@@ -46,18 +46,13 @@ export default function ObserverDashboard({ campaigns }: { campaigns: Campaign[]
     [campaigns],
   );
 
-  const liveCampaigns = campaigns.filter((campaign) => campaign.status === "live").length;
-  const claimProofs = campaigns.reduce((total, campaign) => total + campaign.claimsCount, 0);
-
   return (
     <section className="observer-page" aria-labelledby="observer-title">
       <div className="observer-hero observer-hero-clean">
-        <div>
-          <h1 id="observer-title">Observer</h1>
-        </div>
+        <h1 id="observer-title">Observer</h1>
         <div className="observer-hero-proofbar" aria-label="Observer privacy summary">
-          <span><ShieldCheck size={15} aria-hidden="true" /> Proofs</span>
-          <span>Amounts sealed</span>
+          <span><ShieldCheck size={15} aria-hidden="true" /> Proof</span>
+          <span>Sealed</span>
         </div>
       </div>
 
@@ -81,11 +76,6 @@ export default function ObserverDashboard({ campaigns }: { campaigns: Campaign[]
                   <strong>{filterCounts[option.id].toLocaleString()}</strong>
                 </button>
               ))}
-            </div>
-            <div className="observer-toolbar-stats" aria-label="Observer campaign stats">
-              <ObserverStat label="Campaigns" value={campaigns.length.toLocaleString()} />
-              <ObserverStat label="Live" value={liveCampaigns.toLocaleString()} />
-              <ObserverStat label="Proofs" value={claimProofs.toLocaleString()} />
             </div>
           </>
         ) : null}
@@ -115,7 +105,6 @@ export default function ObserverDashboard({ campaigns }: { campaigns: Campaign[]
 function ObserverCampaignCard({ campaign }: { campaign: Campaign }) {
   const isBatch = campaign.kind === "batch";
   const latestProof = campaign.previews[0]?.proofHash;
-  const maskedRecipient = campaign.previews[0]?.maskedAddress ?? (isBatch ? "rows sealed" : "none");
   const progress = isBatch ? 100 : progressPercent(campaign.claimsCount, campaign.recipientCount);
   const proofLabel = latestProof ? maskAddress(latestProof, 10, 6) : isBatch ? "sealed" : "none";
   const campaignKind = campaign.kind ?? "claim";
@@ -140,12 +129,6 @@ function ObserverCampaignCard({ campaign }: { campaign: Campaign }) {
         </span>
       </div>
 
-      <div className="observer-campaign-metrics" aria-label={`${campaign.name} summary`}>
-        <ObserverMetric label="Recipients" value={campaign.recipientCount.toLocaleString()} />
-        <ObserverMetric label={isBatch ? "Mode" : "Claims"} value={isBatch ? "Direct" : campaign.claimsCount.toLocaleString()} />
-        <ObserverMetric label="Amounts" value="Sealed" />
-      </div>
-
       <div className="observer-campaign-signal">
         <div className="observer-progress-track" aria-hidden="true">
           <span style={{ width: `${progress}%` }} />
@@ -156,27 +139,9 @@ function ObserverCampaignCard({ campaign }: { campaign: Campaign }) {
       <div className="observer-proof-preview">
         <ShieldCheck size={15} aria-hidden="true" />
         <strong className="mono">{proofLabel}</strong>
-        <span className="mono">{maskedRecipient}</span>
+        <span>{campaign.recipientCount.toLocaleString()} recipients</span>
       </div>
     </Link>
-  );
-}
-
-function ObserverStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="observer-stat">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function ObserverMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="observer-campaign-metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
   );
 }
 

@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock, Coins, Copy, RefreshCcw } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, Coins, Copy } from "lucide-react";
 import type { Address, Hex, PublicClient } from "viem";
 import { useAccount, useChainId, usePublicClient, useSwitchChain, useWalletClient } from "wagmi";
 import { cusdcFaucetAddress, cusdcTokenAddress, sepoliaChainId } from "@/lib/env";
@@ -127,25 +126,6 @@ export default function FaucetClaim() {
   const cooldownLabel = faucetState ? formatDuration(Number(faucetState.cooldown)) : "Syncing";
   const canClaim = Boolean(isConnected && address && !wrongNetwork && !isCoolingDown && !claiming && !loading && publicClient && walletClient.data);
 
-  async function refreshFaucetState() {
-    if (!publicClient) {
-      setLoadError("Sepolia client is not ready. Check the configured RPC URL.");
-      return;
-    }
-
-    setLoading(true);
-    setLoadError(null);
-
-    try {
-      const nextState = await readFaucetState(publicClient, address);
-      setFaucetState(nextState);
-    } catch (cause) {
-      setLoadError(errorMessage(cause));
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function copyAddress(value: Address, target: CopyTarget) {
     try {
       await navigator.clipboard.writeText(value);
@@ -196,15 +176,8 @@ export default function FaucetClaim() {
       <div className="faucet-hero faucet-hero-clean">
         <div>
           <span className="product-kicker">Sepolia cUSDC faucet</span>
-          <h1>Claim demo cUSDC for private distribution testing.</h1>
-          <p>
-            Mint the confidential ERC-7984 demo token used by Phase, then use the same cUSDC
-            contract in the admin builder when creating claim, batch, or vesting distributions.
-          </p>
+          <h1>Claim demo cUSDC.</h1>
           <div className="faucet-hero-actions">
-            <Link className="button-secondary" href="/admin">
-              Open Admin
-            </Link>
             <button className="button-ghost" type="button" onClick={() => void copyAddress(cusdcTokenAddress, "token")}>
               {copied === "token" ? <CheckCircle2 size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
               {copied === "token" ? "Copied" : "Copy cUSDC"}
@@ -221,16 +194,13 @@ export default function FaucetClaim() {
             </span>
             <div>
               <span className="section-label">Claim</span>
-              <h2 id="faucet-claim-title">Mint cUSDC to your wallet</h2>
-              <p>One claim per cooldown window. Balance stays confidential.</p>
+              <h2 id="faucet-claim-title">Mint cUSDC</h2>
             </div>
           </div>
 
           <div className="faucet-fact-grid">
-            <FaucetFact label="Claim amount" value={claimAmountLabel} />
+            <FaucetFact label="Amount" value={claimAmountLabel} />
             <FaucetFact label="Cooldown" value={cooldownLabel} />
-            <FaucetFact label="Wallet" value={address ? maskAddress(address) : "Not connected"} />
-            <FaucetFact label="Network" value={wrongNetwork ? `Chain ${chainId}` : "Sepolia"} />
           </div>
 
           <div className="faucet-action-panel">
@@ -242,12 +212,12 @@ export default function FaucetClaim() {
             ) : isCoolingDown ? (
               <div className="validation-message is-valid">
                 <Clock size={16} aria-hidden="true" />
-                <span>Next claim opens {formatDateTime(nextClaimAt)}.</span>
+                <span>Next claim: {formatDateTime(nextClaimAt)}</span>
               </div>
             ) : (
               <div className="validation-message is-valid">
                 <CheckCircle2 size={16} aria-hidden="true" />
-                <span>{isConnected && !wrongNetwork ? "This wallet can claim now." : "Connect on Sepolia to claim."}</span>
+                <span>{isConnected && !wrongNetwork ? "Ready" : "Connect on Sepolia"}</span>
               </div>
             )}
 
@@ -264,20 +234,15 @@ export default function FaucetClaim() {
                   {claiming ? "Claiming" : "Claim cUSDC"}
                 </button>
               )}
-              <button className="button-secondary" type="button" disabled={loading || claiming} onClick={() => void refreshFaucetState()}>
-                <RefreshCcw size={16} aria-hidden="true" />
-                Refresh
-              </button>
             </div>
 
             {latestHash ? (
               <a className="faucet-tx-link" href={`https://sepolia.etherscan.io/tx/${latestHash}`} target="_blank" rel="noreferrer">
-                Latest transaction: <span className="mono">{maskAddress(latestHash)}</span>
+                Transaction <span className="mono">{maskAddress(latestHash)}</span>
               </a>
             ) : null}
           </div>
         </section>
-
       </div>
     </section>
   );

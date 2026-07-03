@@ -12,8 +12,8 @@ import {
   useGetClaimAmount,
 } from "@tokenops/sdk/fhe-airdrop/react";
 import { useUserDecrypt, type DecryptResult } from "@zama-fhe/react-sdk";
-import { AlertCircle, CheckCircle2, Clock3, Eye, Loader2, LockKeyhole, RefreshCcw, Send, WalletCards } from "lucide-react";
-import { formatEther, type Address, type Hex } from "viem";
+import { AlertCircle, CheckCircle2, Eye, Info, Loader2, LockKeyhole, RefreshCcw, Send, WalletCards } from "lucide-react";
+import { type Address, type Hex } from "viem";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { formatTokenUnits, maskAddress } from "@/lib/format";
 import type { Campaign, ClaimPayload } from "@/lib/types";
@@ -38,65 +38,31 @@ export default function RecipientClaim({ campaign }: { campaign: Campaign }) {
   const [loadMessage, setLoadMessage] = useState("Connect wallet.");
 
   useEffect(() => {
-    const controller = new AbortController();
+    setClaimPayload(null);
 
-    async function loadClaim() {
-      if (!campaign.airdropAddress) {
-        setClaimPayload(null);
-        setLoadStatus("error");
-        setLoadMessage("Distribution is not live.");
-        return;
-      }
-
-      if (!address) {
-        setClaimPayload(null);
-        setLoadStatus("disconnected");
-        setLoadMessage("Connect wallet.");
-        return;
-      }
-
-      if (!walletClient) {
-        setClaimPayload(null);
-        setLoadStatus("loading");
-        setLoadMessage("Preparing wallet authorization.");
-        return;
-      }
-
-      setLoadStatus("loading");
-      setLoadMessage("Authorize claim access.");
-
-      const signature = await walletClient.signMessage({
-        account: address,
-        message: claimAccessMessage(campaign.id, address),
-      });
-      const params = new URLSearchParams({ recipient: address, signature });
-      const response = await fetch("/api/campaigns/" + campaign.id + "/claim?" + params.toString(), {
-        cache: "no-store",
-        signal: controller.signal,
-      });
-      const result = (await response.json().catch(() => null)) as { claim?: ClaimPayload; error?: string } | null;
-
-      if (!response.ok || !result?.claim) {
-        setClaimPayload(null);
-        setLoadStatus(response.status === 404 ? "missing" : "error");
-        setLoadMessage(response.status === 404 ? "No claim for this wallet." : result?.error ?? "Could not check claim.");
-        return;
-      }
-
-      setClaimPayload(result.claim);
-      setLoadStatus("ready");
-      setLoadMessage("Claim loaded.");
+    if (!campaign.airdropAddress) {
+      setLoadStatus("error");
+      setLoadMessage("Distribution is not live.");
+      return;
     }
 
-    loadClaim().catch((cause) => {
-      if (controller.signal.aborted) return;
-      setClaimPayload(null);
-      setLoadStatus("error");
-      setLoadMessage(errorMessage(cause));
-    });
+    if (!address) {
+      setLoadStatus("disconnected");
+      setLoadMessage("Connect wallet.");
+      return;
+    }
 
-    return () => controller.abort();
-  }, [address, campaign.airdropAddress, campaign.id, walletClient]);
+    const checkedClaim = readCheckedClaim(campaign.id, address);
+    if (!checkedClaim) {
+      setLoadStatus("missing");
+      setLoadMessage("Check eligibility on the recipient page first.");
+      return;
+    }
+
+    setClaimPayload(checkedClaim);
+    setLoadStatus("ready");
+    setLoadMessage("Claim loaded.");
+  }, [address, campaign.airdropAddress, campaign.id]);
 
   return (
     <section className="recipient-claim-page" aria-labelledby="claim-title">
@@ -113,7 +79,7 @@ export default function RecipientClaim({ campaign }: { campaign: Campaign }) {
         {campaign.airdropAddress && claimPayload && address ? (
           <ClaimFlow campaign={campaign} claimPayload={claimPayload} user={address} />
         ) : (
-          <ClaimGate loadStatus={loadStatus} loadMessage={loadMessage} user={address} campaign={campaign} />
+          <ClaimGate loadStatus={loadStatus} loadMessage={loadMessage} />
         )}
       </div>
     </section>
@@ -214,33 +180,6 @@ function ClaimFlow({ campaign, claimPayload, user }: { campaign: Campaign; claim
   }, [airdropClient, claimPayload.encryptedInput.handle, user]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function checkClaim() {
-      if (!airdropClient) {
-        setPreflightState({ status: "idle" });
-        return;
-      }
-
-      setPreflightState({ status: "checking" });
-      try {
-        const result = await airdropClient.preflightClaim({
-          caller: user,
-          encryptedAmountHandle: claimPayload.encryptedInput.handle,
-        });
-        if (!cancelled) setPreflightState({ status: result.ready ? "ready" : "blocked", result });
-      } catch (cause) {
-        if (!cancelled) setPreflightState({ status: "error", error: errorMessage(cause) });
-      }
-    }
-
-    checkClaim();
-    return () => {
-      cancelled = true;
-    };
-  }, [airdropClient, claimPayload.encryptedInput.handle, user]);
-
-  useEffect(() => {
     if (allocation === null || markedRevealed || done) return;
 
     setMarkedRevealed(true);
@@ -302,7 +241,6 @@ function ClaimFlow({ campaign, claimPayload, user }: { campaign: Campaign; claim
       signatureValid.data === undefined ||
       claimed.data === undefined ||
       gasFee.data === undefined ||
-      preflightState.status === "idle" ||
       preflightState.status === "checking");
   const ready =
     !done &&
@@ -311,7 +249,7 @@ function ClaimFlow({ campaign, claimPayload, user }: { campaign: Campaign; claim
     signatureValid.data === true &&
     claimed.data === false &&
     gasFee.data !== undefined &&
-    preflightState.status === "ready";
+    (preflightState.status === "idle" || preflightState.status === "ready");
   const blockedMessage =
     lastError ??
     signatureValid.error?.message ??
@@ -324,58 +262,59 @@ function ClaimFlow({ campaign, claimPayload, user }: { campaign: Campaign; claim
     (!revealDone ? "Reveal and decrypt your allocation before claiming." : null) ??
     (claimed.data === true ? null : preflightState.status === "blocked" ? preflightBlockerMessage(preflightState.result) : null) ??
     (preflightState.status === "error" ? preflightState.error ?? "Claim check failed." : null);
-  const stage = done ? "done" : ready ? "ready" : checksPending ? "checking" : "blocked";
+  const stage = done ? "done" : !revealDone ? "blocked" : ready ? "ready" : checksPending ? "checking" : "blocked";
   const stageCopy = getStageCopy(stage);
+  const visibleBlockedMessage = !revealDone ? null : blockedMessage;
 
   return (
     <div className="recipient-claim-body">
       <div className={`recipient-claim-stage is-${stage}`} aria-live="polite">
-        <span className="recipient-claim-icon">{stageCopy.icon}</span>
+        {stageCopy.icon ? <span className="recipient-claim-icon">{stageCopy.icon}</span> : null}
         <div>
-          <span className={stage === "done" || stage === "ready" ? "pill pill-live" : stage === "checking" ? "pill pill-watch" : "pill pill-sealed"}>
-            {stageCopy.kicker}
-          </span>
-          <h2>{stageCopy.title}</h2>
-          <p>{stageCopy.copy}</p>
+          {stageCopy.kicker ? (
+            <span className={stage === "done" || stage === "ready" ? "pill pill-live" : stage === "checking" ? "pill pill-watch" : "pill pill-sealed"}>
+              {stageCopy.kicker}
+            </span>
+          ) : null}
+          <div className={stageCopy.title ? "recipient-claim-title-row" : "recipient-claim-title-row is-icon-only"}>
+            {stageCopy.title ? <h2>{stageCopy.title}</h2> : null}
+            {stageCopy.info ? (
+              <span className="recipient-claim-info" tabIndex={0} role="img" aria-label={stageCopy.info} data-tooltip={stageCopy.info}>
+                <Info size={15} aria-hidden="true" />
+              </span>
+            ) : null}
+          </div>
+          {stageCopy.copy ? <p>{stageCopy.copy}</p> : null}
         </div>
 
-        <button className="button-primary recipient-claim-button" type="button" disabled={!ready || claim.isPending || done} onClick={claimTokens}>
-          {claim.isPending ? <Loader2 size={17} className="animate-spin" aria-hidden="true" /> : done ? <CheckCircle2 size={17} aria-hidden="true" /> : <Send size={17} aria-hidden="true" />}
-          {claim.isPending ? "Claiming" : done ? "Claimed" : "Claim now"}
-        </button>
+        <div className={`recipient-claim-focus ${revealDone ? "is-revealed" : ""}`} aria-label="Claim proof and allocation">
+          <div className="recipient-claim-focus-row">
+            <span>Private allocation</span>
+            <strong>{allocationLabel}</strong>
+          </div>
+          <div className="recipient-claim-focus-row">
+            <span>Proof</span>
+            <strong className="mono">{maskAddress(claimPayload.signature, 10, 8)}</strong>
+          </div>
+        </div>
 
-        {blockedMessage ? (
+        <div className="recipient-claim-actions">
+          <button className="button-secondary recipient-reveal-button" type="button" disabled={done || revealBusy} onClick={() => void revealAllocation()}>
+            {revealBusy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : revealDone ? <CheckCircle2 size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+            {revealBusy ? "Revealing" : revealDone ? "Revealed" : "Reveal allocation"}
+          </button>
+          <button className="button-primary recipient-claim-button" type="button" disabled={!ready || claim.isPending || done} onClick={claimTokens}>
+            {claim.isPending ? <Loader2 size={17} className="animate-spin" aria-hidden="true" /> : done ? <CheckCircle2 size={17} aria-hidden="true" /> : <Send size={17} aria-hidden="true" />}
+            {claim.isPending ? "Claiming" : done ? "Claimed" : "Claim now"}
+          </button>
+        </div>
+
+        {visibleBlockedMessage ? (
           <div className="recipient-claim-alert">
             <AlertCircle size={16} aria-hidden="true" />
-            <span>{blockedMessage}</span>
+            <span>{visibleBlockedMessage}</span>
           </div>
         ) : null}
-      </div>
-
-      <div className="recipient-simple-steps">
-        <ClaimStep label="Wallet" value={maskAddress(user)} done />
-        <ClaimStep label="Reveal" value={revealDone ? "Decrypted" : revealBusy ? "Decrypting" : "Required"} done={revealDone} active={revealBusy} />
-        <ClaimStep label="Check" value={ready || done ? "Ready" : checksPending ? "Checking" : "Blocked"} done={ready || done} active={checksPending} />
-        <ClaimStep label="Claim" value={done ? "Done" : "Next"} done={done} active={ready} />
-      </div>
-
-      <div className={`recipient-reveal-panel ${revealDone ? "is-revealed" : ""}`}>
-        <div>
-          <span className="section-label">Private allocation</span>
-          <strong>{allocationLabel}</strong>
-          <p>{revealDone ? "Decrypted through Zama user decrypt for this wallet." : "Reveal verifies the signed claim amount before transfer."}</p>
-        </div>
-        <button className="button-secondary recipient-reveal-button" type="button" disabled={done || revealBusy} onClick={() => void revealAllocation()}>
-          {revealBusy ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : revealDone ? <CheckCircle2 size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
-          {revealBusy ? "Revealing" : revealDone ? "Revealed" : "Reveal allocation"}
-        </button>
-      </div>
-
-      <div className="recipient-claim-meta" aria-label="Claim details">
-        <MetaItem label="Token" value={maskAddress(campaign.tokenAddress)} />
-        <MetaItem label="Allocation" value={allocationLabel} />
-        <MetaItem label="Fee" value={formatNativeFee(gasFee.data)} />
-        <MetaItem label="Proof" value={maskAddress(claimPayload.signature, 10, 8)} mono />
       </div>
 
       {!done && (preflightState.status === "blocked" || preflightState.status === "error") ? (
@@ -391,13 +330,9 @@ function ClaimFlow({ campaign, claimPayload, user }: { campaign: Campaign; claim
 function ClaimGate({
   loadStatus,
   loadMessage,
-  user,
-  campaign,
 }: {
   loadStatus: ClaimLoadStatus;
   loadMessage: string;
-  user?: Address;
-  campaign: Campaign;
 }) {
   const state = getGateState(loadStatus);
 
@@ -414,43 +349,10 @@ function ClaimGate({
           {state.button}
         </button>
       </div>
-
-      <div className="recipient-simple-steps">
-        <ClaimStep label="Wallet" value={user ? maskAddress(user) : "Connect"} done={Boolean(user)} active={!user} />
-        <ClaimStep label="Check" value={loadStatus === "loading" ? "Checking" : loadStatus === "ready" ? "Ready" : "Waiting"} active={loadStatus === "loading"} />
-        <ClaimStep label="Reveal" value="Locked" />
-        <ClaimStep label="Claim" value="Locked" />
-      </div>
-
-      <div className="recipient-claim-meta" aria-label="Claim details">
-        <MetaItem label="Campaign" value={campaign.airdropAddress ? maskAddress(campaign.airdropAddress) : "Not live"} />
-        <MetaItem label="Token" value={maskAddress(campaign.tokenAddress)} />
-        <MetaItem label="Status" value={campaign.status} />
-      </div>
     </div>
   );
 }
 
-function ClaimStep({ label, value, done, active }: { label: string; value: string; done?: boolean; active?: boolean }) {
-  return (
-    <div className={`recipient-simple-step ${done ? "is-done" : active ? "is-active" : ""}`}>
-      <span>{done ? <CheckCircle2 size={16} aria-hidden="true" /> : active ? <Clock3 size={16} aria-hidden="true" /> : <LockKeyhole size={15} aria-hidden="true" />}</span>
-      <div>
-        <small>{label}</small>
-        <strong>{value}</strong>
-      </div>
-    </div>
-  );
-}
-
-function MetaItem({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div>
-      <span>{label}</span>
-      <strong className={mono ? "mono" : undefined}>{value}</strong>
-    </div>
-  );
-}
 
 function getGateState(status: ClaimLoadStatus): { stage: "checking" | "blocked"; icon: ReactNode; kicker: string; title: string; button: string } {
   if (status === "loading") {
@@ -480,7 +382,7 @@ function getGateState(status: ClaimLoadStatus): { stage: "checking" | "blocked";
   };
 }
 
-function getStageCopy(stage: "done" | "ready" | "checking" | "blocked"): { icon: ReactNode; kicker: string; title: string; copy: string } {
+function getStageCopy(stage: "done" | "ready" | "checking" | "blocked"): { icon: ReactNode; kicker: string; title: string; copy: string; info?: string } {
   if (stage === "done") {
     return {
       icon: <CheckCircle2 size={34} aria-hidden="true" />,
@@ -506,10 +408,11 @@ function getStageCopy(stage: "done" | "ready" | "checking" | "blocked"): { icon:
     };
   }
   return {
-    icon: <AlertCircle size={34} aria-hidden="true" />,
-    kicker: "Blocked",
-    title: "Claim unavailable",
-    copy: "Fix the blocker and recheck.",
+    icon: null,
+    kicker: "",
+    title: "",
+    copy: "",
+    info: "Reveal and decrypt your allocation before claiming.",
   };
 }
 
@@ -517,11 +420,6 @@ function preflightBlockerMessage(result?: PreflightResult | null): string | null
   return result?.blockers[0]?.message ?? null;
 }
 
-function formatNativeFee(value?: bigint): string {
-  if (value === undefined) return "Checking";
-  if (value === 0n) return "0 ETH";
-  return `${formatEther(value)} ETH`;
-}
 
 function readDecryptedValue(data: DecryptResult | undefined, handle: Hex): bigint | null {
   const value = data?.[handle];
@@ -536,5 +434,32 @@ function claimAccessMessage(campaignId: string, recipient: string): string {
 }
 
 function errorMessage(cause: unknown): string {
-  return cause instanceof Error ? cause.message : "Claim could not complete.";
+  const message = cause instanceof Error ? cause.message : "Claim could not complete.";
+  if (!message.includes("Failed to initialize FHE worker")) return message;
+
+  const isolated = typeof window !== "undefined" ? window.crossOriginIsolated : true;
+  if (!isolated) {
+    return "Failed to initialize the FHE worker. This claim page is not cross-origin isolated; redeploy or restart with COOP/COEP headers enabled.";
+  }
+
+  return "Failed to initialize the FHE worker. Check that cdn.zama.org is reachable and not blocked by the browser, VPN, or content blocker, then try again.";
+}
+
+function checkedClaimStorageKey(campaignId: string, recipient: string): string {
+  return `phase:checked-claim:${campaignId}:${recipient.toLowerCase()}`;
+}
+
+function readCheckedClaim(campaignId: string, recipient: Address): ClaimPayload | null {
+  if (typeof window === "undefined") return null;
+
+  const raw = window.sessionStorage.getItem(checkedClaimStorageKey(campaignId, recipient));
+  if (!raw) return null;
+
+  try {
+    const claim = JSON.parse(raw) as ClaimPayload;
+    if (claim.campaignId !== campaignId || claim.recipient.toLowerCase() !== recipient.toLowerCase()) return null;
+    return claim;
+  } catch {
+    return null;
+  }
 }
