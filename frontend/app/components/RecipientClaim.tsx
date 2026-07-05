@@ -32,7 +32,6 @@ type ClaimMarkState = "revealed" | "claimed";
 
 export default function RecipientClaim({ campaign }: { campaign: Campaign }) {
   const { address } = useAccount();
-  const { data: walletClient } = useWalletClient();
   const [claimPayload, setClaimPayload] = useState<ClaimPayload | null>(null);
   const [loadStatus, setLoadStatus] = useState<ClaimLoadStatus>("disconnected");
   const [loadMessage, setLoadMessage] = useState("Connect wallet.");

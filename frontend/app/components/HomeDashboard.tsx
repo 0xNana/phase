@@ -1,32 +1,25 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowRight, EyeOff, FileCheck2, LockKeyhole, UploadCloud, Wallet, type LucideIcon } from "lucide-react";
+import { ArrowRight, EyeOff, LockKeyhole, UploadCloud, Wallet, type LucideIcon } from "lucide-react";
 import type { Campaign } from "@/lib/types";
 
-const sealedRows = ["Recipient list", "Allocation amounts", "Public report"];
-const sceneNodes = ["a", "b", "c", "d", "e", "f", "g"];
-const scenePackets = ["a", "b", "c", "d", "e"];
+const sealedRows = ["Recipient list", "Allocation amounts", "Observer report"];
 
 const productCards: Array<{ title: string; copy: string; icon: LucideIcon }> = [
   {
-    title: "Claimable drops",
-    copy: "Let recipients reveal and claim only their own allocation.",
+    title: "Claim drops",
+    copy: "Recipients check eligibility, reveal their own allocation, then claim.",
     icon: Wallet,
   },
   {
-    title: "Bulk payouts",
-    copy: "Upload lists, validate wallets, and prepare sealed allocations.",
+    title: "Batch disperse",
+    copy: "Run confidential one-to-many payouts without exposing the CSV.",
     icon: UploadCloud,
   },
   {
-    title: "Vested distributions",
-    copy: "Set unlock schedules while amounts stay private.",
+    title: "Vesting",
+    copy: "Open private schedules and keep allocation details sealed.",
     icon: LockKeyhole,
-  },
-  {
-    title: "Proof-safe reporting",
-    copy: "Publish status and proof hashes without exposing amounts.",
-    icon: FileCheck2,
   },
 ];
 
@@ -39,49 +32,16 @@ export default function HomeDashboard({ campaign }: { campaign: Campaign | null 
   return (
     <div className="product-page product-overview">
       <section className="overview-hero" aria-labelledby="hero-title">
-        <div className="overview-hero-scene" aria-hidden="true">
-          <span className="overview-scene-grid" />
-          <span className="overview-scene-horizon" />
-          <span className="overview-scene-beam overview-scene-beam-a" />
-          <span className="overview-scene-beam overview-scene-beam-b" />
-
-          <div className="overview-vault-shell">
-            <span className="overview-vault-ring overview-vault-ring-a" />
-            <span className="overview-vault-ring overview-vault-ring-b" />
-            <span className="overview-vault-ring overview-vault-ring-c" />
-            <span className="overview-vault-core" />
-            <span className="overview-vault-lockline overview-vault-lockline-a" />
-            <span className="overview-vault-lockline overview-vault-lockline-b" />
-          </div>
-
-          <div className="overview-recipient-field">
-            {sceneNodes.map((node) => (
-              <span className={`overview-recipient-node overview-recipient-node-${node}`} key={node}>
-                <span />
-              </span>
-            ))}
-          </div>
-
-          <div className="overview-data-lanes">
-            <span className="overview-data-lane overview-data-lane-a" />
-            <span className="overview-data-lane overview-data-lane-b" />
-            <span className="overview-data-lane overview-data-lane-c" />
-          </div>
-
-          <div className="overview-sealed-packets">
-            {scenePackets.map((packet) => (
-              <span className={`overview-sealed-packet overview-sealed-packet-${packet}`} key={packet} />
-            ))}
-          </div>
-        </div>
-
         <div className="overview-hero-copy">
-          <span className="overview-eyebrow">TokenOps SDK</span>
-          <h1 id="hero-title">Distribute tokens privately. Prove claims publicly.</h1>
+          <span className="overview-eyebrow">TokenOps SDK + Zama</span>
+          <h1 id="hero-title">Distribute tokens privately.</h1>
           <p>Launch private token distributions where recipients reveal only their own allocation and observers verify activity without seeing amounts.</p>
           <div className="overview-hero-actions">
             <Link className="button-primary" href="/admin">
               Start distribution <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+            <Link className="button-secondary" href="/recipient">
+              Recipient check
             </Link>
           </div>
         </div>
@@ -89,7 +49,7 @@ export default function HomeDashboard({ campaign }: { campaign: Campaign | null 
         <article className="overview-hero-panel" aria-label="Distribution workspace preview">
           <div className="overview-panel-top">
             <div>
-              <span>Distribution workspace</span>
+              <span>Current distribution</span>
               <strong>{campaign?.name ?? "No distribution created"}</strong>
             </div>
             <span className={hasCampaign ? "pill pill-live" : "pill pill-sealed"}>{campaign?.status ?? "setup"}</span>
@@ -103,7 +63,7 @@ export default function HomeDashboard({ campaign }: { campaign: Campaign | null 
 
           <div className="overview-progress-row">
             <div>
-              <span>Claim progress</span>
+              <span>Progress</span>
               <strong>{campaign ? `${claimRate}%` : "not started"}</strong>
             </div>
             <div className="overview-progress-track" aria-hidden="true">
@@ -130,17 +90,16 @@ export default function HomeDashboard({ campaign }: { campaign: Campaign | null 
           </div>
 
           <div className="overview-panel-footer">
-            <StatusChip icon={<LockKeyhole size={15} aria-hidden="true" />} label="Private by default" value="Sealed" />
-            <StatusChip icon={<EyeOff size={15} aria-hidden="true" />} label="Public output" value="Proof-only" />
+            <StatusChip icon={<LockKeyhole size={15} aria-hidden="true" />} label="Private" value="Sealed" />
+            <StatusChip icon={<EyeOff size={15} aria-hidden="true" />} label="Observer" value="Proof-safe" />
           </div>
         </article>
       </section>
 
       <section id="platform" className="overview-platform" aria-labelledby="platform-title">
         <div className="overview-section-heading">
-          <span className="section-label">Product</span>
-          <h2 id="platform-title">One workspace for private launches.</h2>
-          <p>Claimable, bulk, and vested flows stay sealed by default.</p>
+          <span className="section-label">Workspace</span>
+          <h2 id="platform-title">Pick the distribution flow.</h2>
         </div>
 
         <div className="overview-surface-grid">
@@ -165,29 +124,6 @@ export default function HomeDashboard({ campaign }: { campaign: Campaign | null 
             <CampaignMetric label="Status" value={campaign.status} />
           </div>
         ) : null}
-      </section>
-
-      <section className="overview-cta" aria-labelledby="cta-title">
-        <div className="overview-ready-graphic" aria-hidden="true">
-          <span className="ready-frame ready-frame-a" />
-          <span className="ready-frame ready-frame-b" />
-          <span className="ready-packet ready-packet-a" />
-          <span className="ready-packet ready-packet-b" />
-          <span className="ready-packet ready-packet-c" />
-          <span className="ready-scan" />
-        </div>
-        <span className="section-label">Ready</span>
-        <h2 id="cta-title">Create a private distribution.</h2>
-        <div className="overview-cta-actions">
-          <Link className="button-primary" href="/admin">
-            Start distribution <ArrowRight size={16} aria-hidden="true" />
-          </Link>
-          {campaign ? (
-            <Link className="button-secondary" href={`/observer/${campaign.id}`}>
-              Open Observer
-            </Link>
-          ) : null}
-        </div>
       </section>
     </div>
   );

@@ -60,7 +60,7 @@ import {
 } from "lucide-react";
 import { formatEther, isAddress, keccak256, parseEventLogs, toHex, zeroAddress, type Address, type Hex } from "viem";
 import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
-import { configuredToken, cusdcTokenAddress, sepoliaChainId, tokenOpsFactoryAddress } from "@/lib/env";
+import { configuredToken, sepoliaChainId, tokenOpsFactoryAddress } from "@/lib/env";
 import { dateInputToUnix, formatTokenUnits, maskAddress, nowUnix, safeAddress, unixToDateInput } from "@/lib/format";
 import { parseRecipientCsv } from "@/lib/csv";
 import type { Campaign, CampaignKind, RecipientCsvRow } from "@/lib/types";
@@ -1253,6 +1253,7 @@ export default function AdminBuilder() {
 
   function handleCampaignKindChange(nextKind: CampaignKind) {
     setCampaignKind(nextKind);
+    setError(null);
     if (nextKind === "vesting") {
       const nextStart = nowUnix() + 900;
       setStartDate(unixToDateInput(nextStart));
@@ -1378,21 +1379,6 @@ export default function AdminBuilder() {
                           value={tokenAddress}
                           onChange={(event) => setTokenAddress(event.target.value as Address)}
                         />
-                        <div className="contract-helper-row">
-                          <button
-                            className="button-ghost"
-                            type="button"
-                            onClick={() => {
-                              setTokenAddress(cusdcTokenAddress);
-                              setStatus("cUSDC selected for this drop.");
-                            }}
-                          >
-                            Use cUSDC
-                          </button>
-                          <Link className="button-ghost" href="/faucet">
-                            Get cUSDC
-                          </Link>
-                        </div>
                       </div>
                       {campaignKind === "claim" ? (
                         <>
