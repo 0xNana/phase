@@ -183,7 +183,7 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
   });
   const hasReadyClaim = Boolean(primaryCampaign && primaryCheck?.status === "ready");
   const hasReadyVesting = Boolean(primaryVestingCampaign && primaryVestingCheck?.status === "ready");
-  const canCheck = Boolean(address && walletClient && !checking && (claimCampaigns.length > 0 || vestingCampaigns.length > 0));
+  const canCheck = Boolean(address && !checking && (claimCampaigns.length > 0 || vestingCampaigns.length > 0));
   const requestCheck = () => {
     setCheckRequested(true);
     setCheckAttempt((attempt) => attempt + 1);
@@ -240,7 +240,7 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
             </Link>
           ) : (
             <button className="button-secondary recipient-primary-action" type="button" disabled={!canCheck} onClick={requestCheck}>
-              {!address ? "Connect wallet" : checking ? "Checking" : claimedCampaigns.length > 0 ? "Already claimed" : checkRequested ? "Check again" : "Check"}
+              {!address ? "Connect wallet" : checking ? "Checking" : checkRequested ? "Check again" : "Check"}
             </button>
           )}
         </div>
