@@ -6,23 +6,13 @@ import { ArrowRight, Eye, Search, ShieldCheck } from "lucide-react";
 import { maskAddress } from "@/lib/format";
 import type { Campaign } from "@/lib/types";
 
-type ObserverFilter = "all" | "live";
-
-const filterOptions: Array<{ id: ObserverFilter; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "live", label: "Live" },
-];
-
 export default function ObserverDashboard({ campaigns }: { campaigns: Campaign[] }) {
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<ObserverFilter>("all");
-
   const filteredCampaigns = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return campaigns.filter((campaign) => {
-      if (!campaignMatchesFilter(campaign, filter)) return false;
-      if (!needle) return true;
+    if (!needle) return campaigns;
 
+    return campaigns.filter((campaign) => {
       const proofFields = campaign.previews.flatMap((preview) => [preview.maskedAddress, preview.proofHash, preview.status]);
       return [
         campaign.name,
@@ -34,15 +24,7 @@ export default function ObserverDashboard({ campaigns }: { campaigns: Campaign[]
         ...proofFields,
       ].some((value) => value.toLowerCase().includes(needle));
     });
-  }, [campaigns, filter, query]);
-
-  const filterCounts = useMemo(
-    () =>
-      Object.fromEntries(
-        filterOptions.map((option) => [option.id, campaigns.filter((campaign) => campaignMatchesFilter(campaign, option.id)).length]),
-      ) as Record<ObserverFilter, number>,
-    [campaigns],
-  );
+  }, [campaigns, query]);
 
   return (
     <section className="observer-page" aria-labelledby="observer-title">
@@ -59,24 +41,6 @@ export default function ObserverDashboard({ campaigns }: { campaigns: Campaign[]
           <Search size={17} aria-hidden="true" />
           <input className="input" placeholder="Search campaigns" value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
-        {campaigns.length > 0 ? (
-          <>
-            <div className="observer-filterbar" aria-label="Campaign filters">
-              {filterOptions.map((option) => (
-                <button
-                  className={filter === option.id ? "is-active" : ""}
-                  type="button"
-                  aria-pressed={filter === option.id}
-                  onClick={() => setFilter(option.id)}
-                  key={option.id}
-                >
-                  <span>{option.label}</span>
-                  <strong>{filterCounts[option.id].toLocaleString()}</strong>
-                </button>
-              ))}
-            </div>
-          </>
-        ) : null}
       </div>
 
       {campaigns.length === 0 ? (
@@ -173,11 +137,6 @@ function formatWindow(startTimestamp: number, endTimestamp: number): string {
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp * 1000).toISOString().slice(0, 10);
-}
-
-function campaignMatchesFilter(campaign: Campaign, filter: ObserverFilter): boolean {
-  if (filter === "all") return true;
-  return campaign.status === "live";
 }
 
 function progressPercent(claims: number, recipients: number): number {
