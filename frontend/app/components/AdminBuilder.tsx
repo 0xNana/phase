@@ -1358,7 +1358,10 @@ export default function AdminBuilder() {
                                 className={campaignKind === kind.id ? "is-active" : ""}
                                 type="button"
                                 aria-pressed={campaignKind === kind.id}
-                                onClick={() => handleCampaignKindChange(kind.id)}
+                                onClick={(event) => {
+                                  handleCampaignKindChange(kind.id);
+                                  event.currentTarget.closest("details")?.removeAttribute("open");
+                                }}
                                 key={kind.id}
                               >
                                 {kind.label}

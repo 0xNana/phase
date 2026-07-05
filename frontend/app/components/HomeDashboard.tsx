@@ -116,14 +116,6 @@ export default function HomeDashboard({ campaign }: { campaign: Campaign | null 
             );
           })}
         </div>
-
-        {campaign ? (
-          <div className="overview-campaign-strip" aria-label="Current campaign summary">
-            <CampaignMetric label="Recipients" value={campaign.recipientCount.toLocaleString()} />
-            <CampaignMetric label="Claims" value={campaign.claimsCount.toLocaleString()} />
-            <CampaignMetric label="Status" value={campaign.status} />
-          </div>
-        ) : null}
       </section>
     </div>
   );
@@ -146,15 +138,6 @@ function StatusChip({ icon, label, value }: { icon: ReactNode; label: string; va
         <small>{label}</small>
         <strong>{value}</strong>
       </div>
-    </div>
-  );
-}
-
-function CampaignMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="overview-campaign-metric">
-      <strong>{value}</strong>
-      <span>{label}</span>
     </div>
   );
 }

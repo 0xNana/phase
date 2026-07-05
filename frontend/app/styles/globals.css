@@ -5910,3 +5910,48 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Home workspace polish */
+.product-overview .overview-platform {
+  gap: 16px;
+}
+
+.product-overview .overview-section-heading {
+  margin-bottom: 4px;
+}
+
+.product-overview .overview-surface-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.product-overview .overview-surface-card {
+  grid-template-columns: 40px minmax(0, 1fr);
+  min-height: 0;
+  align-items: start;
+  gap: 12px;
+  padding: 14px;
+}
+
+.product-overview .overview-surface-icon {
+  grid-row: span 2;
+}
+
+.product-overview .overview-surface-card h3 {
+  align-self: end;
+  margin: 0;
+}
+
+.product-overview .overview-surface-card p {
+  grid-column: 2;
+  margin: -2px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+  .product-overview .overview-surface-grid {
+    grid-template-columns: 1fr;
+  }
+}
