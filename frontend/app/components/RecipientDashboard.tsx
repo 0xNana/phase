@@ -33,8 +33,17 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
   }, [address]);
 
   useEffect(() => {
-    if (!address || !walletClient || claimCampaigns.length === 0 || !checkRequested) {
+    if (!address || claimCampaigns.length === 0 || !checkRequested) {
       setClaimChecks({});
+      return;
+    }
+
+    if (!walletClient) {
+      setClaimChecks(
+        Object.fromEntries(
+          claimCampaigns.map((campaign) => [campaign.id, { status: "checking", message: "Preparing wallet" } satisfies ClaimCheck]),
+        ),
+      );
       return;
     }
 
@@ -160,10 +169,12 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
     () => vestingCampaigns.filter((campaign) => vestingChecks[campaign.id]?.status === "ready"),
     [vestingCampaigns, vestingChecks],
   );
+  const waitingForClaimWallet = Boolean(address && checkRequested && claimCampaigns.length > 0 && !walletClient);
   const checking =
     Boolean(address) &&
     checkRequested &&
-    (claimCampaigns.some((campaign) => claimChecks[campaign.id]?.status === "checking") ||
+    (waitingForClaimWallet ||
+      claimCampaigns.some((campaign) => claimChecks[campaign.id]?.status === "checking") ||
       vestingCampaigns.some((campaign) => vestingChecks[campaign.id]?.status === "checking"));
   const primaryCampaign = readyCampaigns[0] ?? claimCampaigns[0] ?? null;
   const primaryCheck = primaryCampaign ? claimChecks[primaryCampaign.id] : undefined;
