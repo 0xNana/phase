@@ -232,9 +232,11 @@ function ClaimFlow({ campaign, claimPayload, user }: { campaign: Campaign; claim
         signature: claimPayload.signature,
         value: gasFee.data,
       });
-      await markClaimState("claimed");
       setMarkedClaimed(true);
+      setLastError(null);
+      setPreflightState({ status: "ready" });
       await queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-airdrop"] });
+      markClaimState("claimed").catch(() => undefined);
     } catch (cause) {
       const message = errorMessage(cause);
       if (isAlreadyRedeemedError(message)) {
@@ -278,7 +280,7 @@ function ClaimFlow({ campaign, claimPayload, user }: { campaign: Campaign; claim
     (preflightState.status === "error" ? preflightState.error ?? "Claim check failed." : null);
   const stage = done ? "done" : !revealDone ? "blocked" : ready ? "ready" : checksPending ? "checking" : "blocked";
   const stageCopy = getStageCopy(stage);
-  const visibleBlockedMessage = !revealDone ? null : blockedMessage;
+  const visibleBlockedMessage = done || !revealDone ? null : blockedMessage;
 
   return (
     <div className="recipient-claim-body">

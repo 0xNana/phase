@@ -3,6 +3,8 @@ import AppChrome from "../../components/AppChrome";
 import RecipientVesting from "../../components/RecipientVesting";
 import { getCampaign } from "../../lib/campaign-store";
 
+export const dynamic = "force-dynamic";
+
 type PageProps = {
   params: Promise<{ campaignId: string }>;
 };

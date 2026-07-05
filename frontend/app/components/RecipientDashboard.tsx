@@ -48,38 +48,48 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
     );
 
     async function checkClaims() {
-      const results = await Promise.all(
-        claimCampaigns.map(async (campaign): Promise<[string, ClaimCheck]> => {
+      try {
+        const signature = await connectedWallet.signMessage({
+          account: connectedAddress,
+          message: recipientAccessMessage(connectedAddress),
+        });
+        const params = new URLSearchParams({ recipient: connectedAddress, signature });
+        const response = await fetch("/api/recipient/claims?" + params.toString(), {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const result = (await response.json().catch(() => null)) as { claims?: ClaimPayload[]; error?: string } | null;
+
+        if (controller.signal.aborted) return;
+
+        if (!response.ok) {
+          setClaimChecks(
+            Object.fromEntries(claimCampaigns.map((campaign) => [campaign.id, { status: "error", message: result?.error ?? "Check failed" } satisfies ClaimCheck])),
+          );
+          return;
+        }
+
+        const claimsByCampaign = new Map((result?.claims ?? []).map((claim) => [claim.campaignId, claim]));
+        const results = claimCampaigns.map((campaign): [string, ClaimCheck] => {
           if (!campaign.airdropAddress || campaign.status !== "live") {
             return [campaign.id, { status: "missing", message: "Not live" }];
           }
 
-          try {
-            const signature = await connectedWallet.signMessage({
-              account: connectedAddress,
-              message: claimAccessMessage(campaign.id, connectedAddress),
-            });
-            const params = new URLSearchParams({ recipient: connectedAddress, signature });
-            const response = await fetch("/api/campaigns/" + campaign.id + "/claim?" + params.toString(), {
-              cache: "no-store",
-              signal: controller.signal,
-            });
-            if (response.ok) {
-              const result = (await response.json().catch(() => null)) as { claim?: ClaimPayload } | null;
-              if (result?.claim) storeCheckedClaim(result.claim);
-              return [campaign.id, result?.claim?.claimedAt ? { status: "claimed", message: "Claimed" } : { status: "ready", message: "Ready" }];
-            }
-            if (response.status === 404) return [campaign.id, { status: "missing", message: "No claim" }];
-            return [campaign.id, { status: "error", message: "Check failed" }];
-          } catch (cause) {
-            if (controller.signal.aborted) return [campaign.id, { status: "checking", message: "Checking wallet" }];
-            return [campaign.id, { status: "error", message: cause instanceof Error ? cause.message : "Check failed" }];
-          }
-        }),
-      );
+          const claim = claimsByCampaign.get(campaign.id);
+          if (!claim) return [campaign.id, { status: "missing", message: "No claim" }];
 
-      if (!controller.signal.aborted) {
+          storeCheckedClaim(claim);
+          return [campaign.id, claim.claimedAt ? { status: "claimed", message: "Claimed" } : { status: "ready", message: "Ready" }];
+        });
+
         setClaimChecks(Object.fromEntries(results));
+      } catch (cause) {
+        if (controller.signal.aborted) return;
+        setClaimChecks(
+          Object.fromEntries(
+            claimCampaigns.map((campaign) => [campaign.id, { status: "error", message: cause instanceof Error ? cause.message : "Check failed" } satisfies ClaimCheck]),
+          ),
+        );
       }
     }
 
@@ -329,8 +339,8 @@ function getDashboardState({
   return { title: "No match found.", copy: "No live claim or schedule for this wallet." };
 }
 
-function claimAccessMessage(campaignId: string, recipient: string): string {
-  return "Phase claim access\nCampaign: " + campaignId + "\nRecipient: " + recipient.toLowerCase();
+function recipientAccessMessage(recipient: string): string {
+  return "Phase recipient access\nRecipient: " + recipient.toLowerCase();
 }
 
 function isClaimCampaign(campaign: Campaign): boolean {

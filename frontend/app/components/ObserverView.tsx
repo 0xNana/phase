@@ -134,7 +134,7 @@ function ProofRow({ preview, index }: { preview: PublicRecipientPreview; index: 
       <td className="mono max-w-[260px] overflow-hidden text-ellipsis whitespace-nowrap px-5 py-4 text-sm text-[var(--muted)]">{preview.proofHash}</td>
       <td className="px-5 py-4">
         <span className={preview.status === "claimed" ? "pill pill-live" : preview.status === "revealed" ? "pill pill-watch" : "pill pill-sealed"}>
-          {preview.status === "claimed" ? "Verified" : preview.status}
+          {preview.status}
         </span>
       </td>
     </tr>

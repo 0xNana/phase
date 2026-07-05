@@ -312,6 +312,19 @@ export async function getClaimPayload(campaignId: string, recipient: string): Pr
   return mapClaim(data as ClaimRow);
 }
 
+export async function listClaimPayloadsForRecipient(recipient: string): Promise<ClaimPayload[]> {
+  if (!isAddress(recipient)) return [];
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from("claims")
+    .select("*")
+    .eq("recipient", recipient.toLowerCase());
+
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as ClaimRow[]).map(mapClaim);
+}
+
 export async function saveVestingSchedules(
   campaignId: string,
   inputs: SaveVestingScheduleInput[],
