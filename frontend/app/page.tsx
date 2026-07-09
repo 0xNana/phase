@@ -5,11 +5,11 @@ import { listCampaigns } from "./lib/campaign-store";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [campaign] = await listCampaigns();
+  const campaigns = await listCampaigns();
 
   return (
-    <AppChrome campaignId={campaign?.id}>
-      <HomeDashboard campaign={campaign ?? null} />
+    <AppChrome campaignId={campaigns[0]?.id}>
+      <HomeDashboard campaigns={campaigns} />
     </AppChrome>
   );
 }

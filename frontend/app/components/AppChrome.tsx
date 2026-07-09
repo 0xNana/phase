@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { ChevronsLeft, ChevronsRight, Eye, Home, Menu, Send, UserCheck, X } from "lucide-react";
+import NetworkBanner from "./NetworkBanner";
 import WalletDropdown from "./WalletDropdown";
 
 const navLinks: Array<{
@@ -30,13 +31,13 @@ const navLinks: Array<{
     href: "/recipient",
     label: "Recipient",
     icon: UserCheck,
-    match: (pathname) => pathname.startsWith("/recipient") || pathname.startsWith("/claim"),
+    match: (pathname) => pathname.startsWith("/recipient") || pathname.startsWith("/claim") || pathname.startsWith("/vesting"),
   },
   {
     href: "/observer",
     label: "Observer",
     icon: Eye,
-    match: (pathname) => pathname.startsWith("/observer"),
+    match: (pathname) => pathname.startsWith("/observer") || pathname.startsWith("/campaign"),
   },
 ];
 
@@ -51,7 +52,7 @@ const footerFaqs = [
   },
   {
     question: "What powers Phase distributions?",
-    answer: "Phase is built on TokenOps SDK for private distribution setup, recipient claims, and proof-aware campaign flows.",
+    answer: "Phase is built on TokenOps SDK for private distribution setup, recipient claims, and proof-aware distribution flows.",
   },
   {
     question: "Who can reveal an allocation?",
@@ -175,6 +176,7 @@ export default function AppChrome({ children }: { children: React.ReactNode; cam
       ) : null}
 
       <div className="content-shell">
+        <NetworkBanner />
         <header className="desktop-walletbar">
           <Link className="header-faucet-link" href="/faucet">Get cUSDC</Link>
           <WalletDropdown />
@@ -185,19 +187,21 @@ export default function AppChrome({ children }: { children: React.ReactNode; cam
         </main>
 
         <footer className="app-footer">
-          <section className="app-footer-faq" aria-labelledby="footer-faq-title">
-            <div className="app-footer-faq-heading">
-              <h2 id="footer-faq-title">FAQ</h2>
-            </div>
-            <div className="app-footer-faq-list">
-              {footerFaqs.map((faq) => (
-                <details className="app-footer-faq-item" key={faq.question}>
-                  <summary>{faq.question}</summary>
-                  <p>{faq.answer}</p>
-                </details>
-              ))}
-            </div>
-          </section>
+          <div className="app-footer-top">
+            <section className="app-footer-faq" aria-labelledby="footer-faq-title">
+              <div className="app-footer-faq-heading">
+                <h2 id="footer-faq-title">FAQ</h2>
+              </div>
+              <div className="app-footer-faq-list">
+                {footerFaqs.map((faq) => (
+                  <details className="app-footer-faq-item" key={faq.question}>
+                    <summary>{faq.question}</summary>
+                    <p>{faq.answer}</p>
+                  </details>
+                ))}
+              </div>
+            </section>
+          </div>
 
           <div className="app-footer-content">
             <div className="app-footer-brand">
@@ -215,6 +219,8 @@ export default function AppChrome({ children }: { children: React.ReactNode; cam
               <Link href="/recipient">Recipient</Link>
               <Link href="/observer">Observer</Link>
               <Link href="/faucet">Faucet</Link>
+              <Link href="/how-it-works">How it works</Link>
+              <Link href="/privacy">Privacy</Link>
             </nav>
 
             <div className="app-footer-social" aria-label="Social channels">

@@ -257,6 +257,17 @@ export default function RecipientDashboard({ campaigns }: { campaigns: Campaign[
         </div>
       </div>
 
+      {checking ? (
+        <section className="recipient-ready-list panel" aria-busy="true" aria-label="Checking eligibility">
+          <h2>Looking up distributions</h2>
+          <div className="skeleton-stack" aria-hidden="true">
+            <div className="skeleton-row is-title" />
+            <div className="skeleton-row" />
+            <div className="skeleton-row is-short" />
+          </div>
+        </section>
+      ) : null}
+
       {readyCampaigns.length > 1 ? (
         <section className="recipient-ready-list panel" aria-labelledby="ready-claims-title">
           <h2 id="ready-claims-title">Ready claims</h2>

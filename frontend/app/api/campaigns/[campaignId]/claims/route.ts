@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAddress, isHex } from "viem";
-import { saveClaimPayload } from "@/lib/campaign-store";
+import { verifyAdminAccess } from "@/lib/admin-access-server";
+import { listDistributionRecipients, saveClaimPayload } from "@/lib/campaign-store";
 import type { IssueClaimInput } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -8,6 +9,25 @@ export const runtime = "nodejs";
 type RouteContext = {
   params: Promise<{ campaignId: string }>;
 };
+
+export async function GET(request: Request, context: RouteContext) {
+  const { campaignId } = await context.params;
+  const { searchParams } = new URL(request.url);
+  const admin = searchParams.get("admin");
+  const signature = searchParams.get("signature");
+
+  if (!admin || !signature || !isAddress(admin)) {
+    return NextResponse.json({ error: "Signed creator access is required" }, { status: 400 });
+  }
+
+  const verified = await verifyAdminAccess(campaignId, admin, signature);
+  if (!verified) {
+    return NextResponse.json({ error: "Invalid creator access signature" }, { status: 401 });
+  }
+
+  const recipients = await listDistributionRecipients(campaignId);
+  return NextResponse.json({ recipients });
+}
 
 export async function POST(request: Request, context: RouteContext) {
   const { campaignId } = await context.params;

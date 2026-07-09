@@ -9,6 +9,7 @@ import type {
   PublicRecipientPreview,
   SaveVestingScheduleInput,
   VestingScheduleRecord,
+  DistributionRecipientRow,
 } from "./types";
 
 type CampaignRow = {
@@ -239,6 +240,66 @@ export async function createCampaign(input: CampaignInput): Promise<Campaign> {
   if (error) throw new Error(error.message);
 
   return mapCampaign(row, []);
+}
+
+export async function listDistributionRecipients(campaignId: string): Promise<DistributionRecipientRow[]> {
+  const supabase = getSupabase();
+  const { data: claims, error: claimsError } = await supabase
+    .from("claims")
+    .select("recipient, revealed_at, claimed_at")
+    .eq("campaign_id", campaignId)
+    .order("issued_at", { ascending: true });
+
+  if (claimsError) throw new Error(claimsError.message);
+
+  const { data: previews, error: previewsError } = await supabase
+    .from("campaign_previews")
+    .select("recipient_address, masked_address, status")
+    .eq("campaign_id", campaignId);
+
+  if (previewsError) throw new Error(previewsError.message);
+
+  const previewByRecipient = new Map<string, { maskedAddress: string; status: PublicRecipientPreview["status"] }>();
+  for (const row of previews ?? []) {
+    previewByRecipient.set(String(row.recipient_address).toLowerCase(), {
+      maskedAddress: String(row.masked_address),
+      status: row.status as PublicRecipientPreview["status"],
+    });
+  }
+
+  return ((claims ?? []) as Array<{ recipient: string; revealed_at: string | null; claimed_at: string | null }>).map((claim) => {
+    const recipient = claim.recipient as Address;
+    const preview = previewByRecipient.get(recipient.toLowerCase());
+    const status = preview?.status ?? "pending";
+    const revealStatus: DistributionRecipientRow["revealStatus"] =
+      status === "revealed" || status === "claimed" || claim.revealed_at ? "revealed" : "not_revealed";
+    const claimStatus: DistributionRecipientRow["claimStatus"] =
+      status === "claimed" || claim.claimed_at ? "claimed" : "not_claimed";
+
+    return {
+      recipient,
+      maskedAddress: preview?.maskedAddress ?? maskAddress(recipient),
+      revealStatus,
+      claimStatus,
+    };
+  });
+}
+
+export async function updateCampaignEndTimestamp(id: string, endTimestamp: number): Promise<Campaign | null> {
+  const supabase = getSupabase();
+  const updatedAt = new Date().toISOString();
+  const { data, error } = await supabase
+    .from("campaigns")
+    .update({ end_timestamp: endTimestamp, updated_at: updatedAt })
+    .eq("id", id)
+    .select("*")
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+
+  const previewsByCampaign = await loadPreviewsForCampaigns([id]);
+  return mapCampaign(data as CampaignRow, previewsByCampaign.get(id) ?? []);
 }
 
 export async function updateCampaignStatus(id: string, status: Campaign["status"]): Promise<Campaign | null> {

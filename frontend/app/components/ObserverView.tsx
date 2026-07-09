@@ -49,9 +49,9 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
         </div>
       </div>
 
-      <div className="observer-detail-stats" aria-label="Observer campaign facts">
+      <div className="observer-detail-stats" aria-label="Observer distribution facts">
         <DetailStat icon={<Users size={18} aria-hidden="true" />} label="Events" value={proofRows.length.toLocaleString()} />
-        <DetailStat icon={<ShieldCheck size={18} aria-hidden="true" />} label="Distribution" value={campaign.airdropAddress ? maskAddress(campaign.airdropAddress) : "Not created"} href={distributionHref} />
+        <DetailStat icon={<ShieldCheck size={18} aria-hidden="true" />} label="Contract" value={campaign.airdropAddress ? maskAddress(campaign.airdropAddress) : "Not created"} href={distributionHref} />
       </div>
 
       <section className="observer-detail-table">
@@ -76,7 +76,7 @@ export default function ObserverView({ campaign }: { campaign: Campaign }) {
               ) : (
                 <tr>
                   <td className="px-5 py-6 text-[var(--muted)]" colSpan={4}>
-                    No proofs yet.
+                    No proofs yet. Claim activity will appear here once recipients reveal and claim.
                   </td>
                 </tr>
               )}

@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { ArrowRight, Eye, Search, ShieldCheck } from "lucide-react";
 import { maskAddress } from "@/lib/format";
 import type { Campaign } from "@/lib/types";
+import StatusBadge from "./StatusBadge";
 
 export default function ObserverDashboard({ campaigns }: { campaigns: Campaign[] }) {
   const [query, setQuery] = useState("");
@@ -39,19 +40,20 @@ export default function ObserverDashboard({ campaigns }: { campaigns: Campaign[]
       <div className="observer-toolbar panel">
         <label className="observer-search">
           <Search size={17} aria-hidden="true" />
-          <input className="input" placeholder="Search campaigns" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <input className="input" placeholder="Search distributions" value={query} onChange={(event) => setQuery(event.target.value)} />
         </label>
       </div>
 
       {campaigns.length === 0 ? (
         <section className="observer-empty panel">
           <Eye size={22} aria-hidden="true" />
-          <h2>No campaigns.</h2>
+          <h2>No distributions yet.</h2>
+          <p>Launch your first confidential distribution to observe claim activity.</p>
         </section>
       ) : filteredCampaigns.length === 0 ? (
         <section className="observer-empty panel">
           <Search size={22} aria-hidden="true" />
-          <h2>No matching campaigns.</h2>
+          <h2>No matching distributions.</h2>
         </section>
       ) : (
         <div className="observer-campaign-grid">
@@ -74,7 +76,11 @@ function ObserverCampaignCard({ campaign }: { campaign: Campaign }) {
   return (
     <Link className="observer-campaign-card" href={`/observer/${campaign.id}`} aria-label={`Open observer for ${campaign.name}`}>
       <div className="observer-campaign-top">
-        <span className={statusPillClass(campaign)}>{observerStatusLabel(campaign)}</span>
+        {isBatch ? (
+          <span className={statusPillClass(campaign)}>{observerStatusLabel(campaign)}</span>
+        ) : (
+          <StatusBadge campaign={campaign} />
+        )}
         <span className={latestProof || isBatch ? "observer-state-pill is-ready" : "observer-state-pill"}>
           <ShieldCheck size={13} aria-hidden="true" />
           {campaignKind}

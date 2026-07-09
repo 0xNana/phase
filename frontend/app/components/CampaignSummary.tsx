@@ -12,14 +12,14 @@ export default function CampaignSummary({ campaign }: { campaign: Campaign }) {
         <div className="p-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Campaign</span>
+              <span className="text-xs font-bold uppercase tracking-wide text-[var(--muted)]">Distribution</span>
               <h1 className="mt-2 text-3xl font-[780] leading-tight">{campaign.name}</h1>
             </div>
             <span className={campaign.status === "live" ? "pill pill-live" : "pill pill-sealed"}>
               {campaign.status}
             </span>
           </div>
-          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Private token drop. Amounts stay sealed.</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--muted)]">Private token distribution. Amounts stay sealed.</p>
           <div className="mt-5 grid grid-cols-2 gap-3">
             <Stat label="Recipients" value={campaign.recipientCount.toLocaleString()} />
             <Stat label="Claims" value={campaign.claimsCount.toLocaleString()} />

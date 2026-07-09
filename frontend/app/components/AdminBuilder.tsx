@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useZamaSDK } from "@zama-fhe/react-sdk";
 import {
@@ -62,8 +62,12 @@ import { formatEther, isAddress, keccak256, parseEventLogs, toHex, zeroAddress, 
 import { useAccount, useChainId, usePublicClient, useWalletClient } from "wagmi";
 import { configuredToken, sepoliaChainId, tokenOpsFactoryAddress } from "@/lib/env";
 import { dateInputToUnix, formatTokenUnits, maskAddress, nowUnix, safeAddress, unixToDateInput } from "@/lib/format";
+import { isCampaignCreator } from "@/lib/admin-access";
 import { parseRecipientCsv } from "@/lib/csv";
 import type { Campaign, CampaignKind, RecipientCsvRow } from "@/lib/types";
+import ConfirmDialog from "./ConfirmDialog";
+import DistributionDashboard from "./DistributionDashboard";
+import FlowStepper from "./FlowStepper";
 
 const defaultStart = nowUnix() + 900;
 const defaultEnd = nowUnix() + 14 * 86400;
@@ -167,7 +171,7 @@ const vestingCliffUnlockOptions: Array<{ id: VestingCliffUnlock; label: string; 
   { id: "2500", label: "25%", bps: 2500 },
 ];
 
-export default function AdminBuilder() {
+export default function AdminBuilder({ campaigns = [] }: { campaigns?: Campaign[] }) {
   const { address } = useAccount();
   const chainId = useChainId();
   const publicClient = usePublicClient();
@@ -230,7 +234,8 @@ export default function AdminBuilder() {
   const [vestingPaused, setVestingPaused] = useState(false);
   const [fundedCampaign, setFundedCampaign] = useState(false);
   const [claimDeployment, setClaimDeployment] = useState<ClaimDeployment | null>(null);
-  const allowExtensions = true;
+  const [allowExtensions, setAllowExtensions] = useState(true);
+  const [deploymentTxHash, setDeploymentTxHash] = useState<Hex | null>(null);
   const [campaignName, setCampaignName] = useState("");
   const [tokenAddress, setTokenAddress] = useState<Address | "">(initialTokenAddress);
   const [startDate, setStartDate] = useState(unixToDateInput(defaultStart));
@@ -243,6 +248,90 @@ export default function AdminBuilder() {
   const [error, setError] = useState<string | null>(null);
   const [launchOpen, setLaunchOpen] = useState(true);
   const [launchStep, setLaunchStep] = useState<LaunchStep>("details");
+  const [pendingConfirm, setPendingConfirm] = useState<null | "deploy" | "fund" | "sign">(null);
+  const [creatingNew, setCreatingNew] = useState(false);
+  const [dashboardCampaign, setDashboardCampaign] = useState<Campaign | null>(null);
+
+  useEffect(() => {
+    if (!address || creatingNew) return;
+
+    const creatorCampaign =
+      campaigns.find(
+        (campaign) =>
+          campaign.kind === "claim" &&
+          campaign.airdropAddress &&
+          campaign.previews.length > 0 &&
+          isCampaignCreator(campaign, address),
+      ) ??
+      campaigns.find(
+        (campaign) => campaign.kind === "claim" && campaign.airdropAddress && isCampaignCreator(campaign, address),
+      );
+
+    if (!creatorCampaign) return;
+
+    setSavedCampaign(creatorCampaign);
+    setCampaignName(creatorCampaign.name);
+    setTokenAddress(creatorCampaign.tokenAddress);
+    setAirdropAddress(creatorCampaign.airdropAddress ?? "");
+    setStartDate(unixToDateInput(creatorCampaign.startTimestamp));
+    setEndDate(unixToDateInput(creatorCampaign.endTimestamp));
+    setFundedCampaign(true);
+    if (creatorCampaign.previews.length > 0) {
+      setIssueProgress({ done: creatorCampaign.recipientCount, total: creatorCampaign.recipientCount });
+      setLaunchOpen(false);
+    }
+    const storedHash = window.sessionStorage.getItem(`phase:deploy:${creatorCampaign.id}`);
+    if (storedHash?.startsWith("0x")) setDeploymentTxHash(storedHash as Hex);
+  }, [address, campaigns, creatingNew]);
+
+  function startNewDistribution() {
+    if (savedCampaign) setDashboardCampaign(savedCampaign);
+    setCreatingNew(true);
+    setSavedCampaign(null);
+    setCampaignName("");
+    setTokenAddress(initialTokenAddress);
+    setStartDate(unixToDateInput(defaultStart));
+    setEndDate(unixToDateInput(defaultEnd));
+    setCsv("");
+    setAirdropAddress("");
+    setFundedCampaign(false);
+    setClaimDeployment(null);
+    setDeploymentTxHash(null);
+    setIssueProgress({ done: 0, total: 0 });
+    setCampaignKind("claim");
+    setAllowExtensions(true);
+    setLaunchStep("details");
+    setLaunchOpen(true);
+    setError(null);
+    setStatus("Ready.");
+    setPendingConfirm(null);
+  }
+
+  function returnToDashboard() {
+    if (!dashboardCampaign) return;
+
+    setSavedCampaign(dashboardCampaign);
+    setCampaignName(dashboardCampaign.name);
+    setTokenAddress(dashboardCampaign.tokenAddress);
+    setAirdropAddress(dashboardCampaign.airdropAddress ?? "");
+    setStartDate(unixToDateInput(dashboardCampaign.startTimestamp));
+    setEndDate(unixToDateInput(dashboardCampaign.endTimestamp));
+    setFundedCampaign(true);
+    setIssueProgress(
+      dashboardCampaign.previews.length > 0
+        ? { done: dashboardCampaign.recipientCount, total: dashboardCampaign.recipientCount }
+        : { done: 0, total: 0 },
+    );
+    const storedHash = window.sessionStorage.getItem(`phase:deploy:${dashboardCampaign.id}`);
+    setDeploymentTxHash(storedHash?.startsWith("0x") ? (storedHash as Hex) : null);
+    setCreatingNew(false);
+    setLaunchOpen(false);
+    setError(null);
+    setStatus("Ready.");
+    setPendingConfirm(null);
+  }
+
+  const canReturnToDashboard = creatingNew && dashboardCampaign !== null;
 
   const targetAirdrop = airdropAddress || savedCampaign?.airdropAddress || "";
   const vestingManagerAddress = safeAddress(targetAirdrop);
@@ -443,7 +532,6 @@ export default function AdminBuilder() {
   const progressPercent = issueProgress.total > 0 ? Math.round((issueProgress.done / issueProgress.total) * 100) : 0;
   const vestingProgressPercent = vestingProgress.total > 0 ? Math.round((vestingProgress.done / vestingProgress.total) * 100) : 0;
   const claimPayloadReady = issueProgress.total > 0 && issueProgress.done === issueProgress.total;
-  const claimPortalHref = savedCampaign ? "/recipient" : "";
   const resolvedClaimGasFee = factoryCustomFee.data?.enabled ? factoryCustomFee.data.gasFee : factoryDefaultGasFee.data;
   const claimFeeReady = resolvedClaimGasFee !== undefined && (!address || Boolean(factoryCustomFee.data) || !factoryCustomFee.isLoading);
   const canDeploy =
@@ -484,10 +572,15 @@ export default function AdminBuilder() {
   const showClaimCreateActions = !targetAirdrop || claimNeedsFreshDeployment;
   const showClaimFundAction = Boolean(targetAirdrop) && !fundedCampaign && canFundClaimPot;
   const showClaimSignAction = fundedCampaign && !claimPayloadReady;
-  const showClaimPortalAction = claimPayloadReady && Boolean(claimPortalHref);
+  const showDistributionDashboard =
+    !creatingNew &&
+    campaignKind === "claim" &&
+    Boolean(savedCampaign?.airdropAddress) &&
+    (claimPayloadReady || (savedCampaign?.previews.length ?? 0) > 0) &&
+    isCampaignCreator(savedCampaign, address);
   const showClaimApprovalAction = (showClaimCreateActions || showClaimFundAction) && !claimFactoryApproved;
   const showClaimCreateChoice = showClaimCreateActions && claimFactoryApproved;
-  const selectedClaimCreateLabel = claimCreateMode === "fund" ? "Create + fund drop" : "Create drop only";
+  const selectedClaimCreateLabel = claimCreateMode === "fund" ? "Create + fund distribution" : "Create distribution only";
   const selectedClaimCreateDisabled =
     busy ||
     (claimCreateMode === "fund"
@@ -573,13 +666,53 @@ export default function AdminBuilder() {
             ? "Disperse"
             : campaignKind === "vesting"
               ? "Vesting"
-              : "Launch claim drop";
+              : "Launch distribution";
   const launchProgressPercent = launchProgressByStep[launchStep];
+  const adminFlowSteps = [
+    {
+      id: "recipients",
+      label: "Recipients",
+      state:
+        launchStep === "details"
+          ? ("idle" as const)
+          : launchStep === "recipients"
+            ? ("active" as const)
+            : ("done" as const),
+    },
+    {
+      id: "review",
+      label: "Review",
+      state: launchStep === "review" ? ("active" as const) : launchStep === "flow" ? ("done" as const) : ("idle" as const),
+    },
+    {
+      id: "deploy",
+      label: "Deploy",
+      state: targetAirdrop
+        ? ("done" as const)
+        : launchStep === "flow" && showClaimCreateActions
+          ? ("active" as const)
+          : ("idle" as const),
+    },
+    {
+      id: "fund",
+      label: "Fund",
+      state: fundedCampaign
+        ? ("done" as const)
+        : showClaimFundAction || (Boolean(targetAirdrop) && claimCreateMode === "fund" && !claimPayloadReady)
+          ? ("active" as const)
+          : ("idle" as const),
+    },
+    {
+      id: "launch",
+      label: "Launch",
+      state: claimPayloadReady ? ("done" as const) : showClaimSignAction ? ("active" as const) : ("idle" as const),
+    },
+  ];
 
   async function persistCampaign(nextAirdropAddress?: Address, status?: Campaign["status"]) {
-    if (!campaignName.trim()) throw new Error("Enter a campaign name.");
+    if (!campaignName.trim()) throw new Error("Enter a distribution name.");
     if (!tokenValid) throw new Error("Enter a valid token address.");
-    if (campaignKind !== "batch" && !dateValid) throw new Error("Set a valid campaign window.");
+    if (campaignKind !== "batch" && !dateValid) throw new Error("Set a valid distribution window.");
 
     const campaignStartTimestamp = campaignKind === "batch" ? nowUnix() : startTimestamp;
     const campaignEndTimestamp = campaignKind === "batch" ? campaignStartTimestamp + 86400 : endTimestamp;
@@ -698,11 +831,21 @@ export default function AdminBuilder() {
       setAirdropAddress(result.airdrop);
       setFundedCampaign(mode === "fund");
       setClaimDeployment(deployment);
-      await persistCampaign(result.airdrop);
+      setDeploymentTxHash(result.hash);
+      const campaign = await persistCampaign(result.airdrop);
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem(`phase:deploy:${campaign.id}`, result.hash);
+      }
       queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-airdrop"] });
-      setStatus(mode === "fund" ? "Distribution created and funded. Sign authorizations next." : "Distribution created. Fund it before signing authorizations.");
+      setStatus(
+        mode === "fund"
+          ? "Distribution funded. Recipients can reveal and claim after you sign authorizations."
+          : "Distribution created. Fund it before signing authorizations.",
+      );
+      setPendingConfirm(null);
     } catch (cause) {
       setError(formatClaimFundingError(cause, "Distribution creation failed"));
+      setPendingConfirm(null);
     }
   }
 
@@ -718,7 +861,7 @@ export default function AdminBuilder() {
       return;
     }
     if (!claimDeployment) {
-      setError("Use Create + Fund drop for new claim campaigns.");
+      setError("Use Create + fund distribution for new claim distributions.");
       return;
     }
     if (!recipientReady || totalAmount <= 0n) {
@@ -739,9 +882,11 @@ export default function AdminBuilder() {
       });
       setFundedCampaign(true);
       queryClient.invalidateQueries({ queryKey: ["tokenops-sdk", "fhe-airdrop"] });
-      setStatus("Distribution funded. Sign authorizations next.");
+      setStatus("Distribution funded. Recipients can reveal and claim after you sign authorizations.");
+      setPendingConfirm(null);
     } catch (cause) {
       setError(formatClaimFundingError(cause, "Funding failed"));
+      setPendingConfirm(null);
     }
   }
 
@@ -980,9 +1125,17 @@ export default function AdminBuilder() {
         }
         setIssueProgress({ done: i + 1, total: parsed.rows.length });
       }
-      setStatus(campaignKind === "vesting" ? "Vesting inputs issued." : "Claim authorizations signed. Recipient portal is ready.");
+      setStatus(
+        campaignKind === "vesting"
+          ? "Vesting schedules issued. Recipients can open their vesting portal."
+          : "Distribution launched. Recipients can now reveal and claim.",
+      );
+      if (campaignKind === "claim") setCreatingNew(false);
+      setLaunchOpen(false);
+      setPendingConfirm(null);
     } catch (cause) {
       setError(claimIssueErrorMessage(cause));
+      setPendingConfirm(null);
     }
   }
 
@@ -1178,7 +1331,7 @@ export default function AdminBuilder() {
       return;
     }
     if (!campaignName.trim() || !tokenValid) {
-      setError("Complete campaign and token before executing batches.");
+      setError("Complete distribution name and token before executing batches.");
       return;
     }
     if (!recipientReady) {
@@ -1263,6 +1416,15 @@ export default function AdminBuilder() {
 
   return (
     <section className="admin-page">
+      {showDistributionDashboard && savedCampaign ? (
+        <DistributionDashboard
+          campaign={savedCampaign}
+          deploymentTxHash={deploymentTxHash}
+          onCampaignUpdate={setSavedCampaign}
+          onLaunchNew={startNewDistribution}
+        />
+      ) : (
+        <>
       <div className="admin-hero admin-hero-clean">
         <div>
           <h1>Private claim drop</h1>
@@ -1275,20 +1437,30 @@ export default function AdminBuilder() {
         <div className="admin-primary">
           <section className="admin-panel admin-config-panel">
             <div className="admin-config-grid admin-campaign-grid">
-              <button
-                className="admin-envelope-trigger field-wide"
-                type="button"
-                onClick={() => {
-                  setLaunchStep("details");
-                  setLaunchOpen(true);
-                }}
-              >
-                <span className="admin-setting-icon"><Rocket size={18} aria-hidden="true" /></span>
-                <span>
-                  <strong>Resume setup</strong>
-                  <small>Continue configuring the drop.</small>
-                </span>
-              </button>
+              {canReturnToDashboard ? (
+                <button className="admin-envelope-trigger field-wide" type="button" onClick={returnToDashboard}>
+                  <span className="admin-setting-icon"><ArrowLeft size={18} aria-hidden="true" /></span>
+                  <span>
+                    <strong>Back to dashboard</strong>
+                    <small>Return to {dashboardCampaign?.name ?? "your distribution"}.</small>
+                  </span>
+                </button>
+              ) : (
+                <button
+                  className="admin-envelope-trigger field-wide"
+                  type="button"
+                  onClick={() => {
+                    setLaunchStep("details");
+                    setLaunchOpen(true);
+                  }}
+                >
+                  <span className="admin-setting-icon"><Rocket size={18} aria-hidden="true" /></span>
+                  <span>
+                    <strong>Resume setup</strong>
+                    <small>Continue configuring the drop.</small>
+                  </span>
+                </button>
+              )}
             </div>
           </section>
         </div>
@@ -1300,20 +1472,24 @@ export default function AdminBuilder() {
           <section className="admin-envelope-dialog" aria-labelledby="admin-envelope-title">
             <div className="admin-envelope-header">
               <div className="admin-envelope-title-block">
-                <div className={launchStep === "details" ? "admin-launch-journey" : "admin-launch-journey has-back"} aria-label="Setup progress">
-                  {launchStep !== "details" ? (
+                <div className={launchStep === "details" && !canReturnToDashboard ? "admin-launch-journey" : "admin-launch-journey has-back"} aria-label="Setup progress">
+                  {launchStep !== "details" || canReturnToDashboard ? (
                     <button
                       className="admin-launch-back"
                       type="button"
-                      aria-label="Back to previous launch step"
+                      aria-label={canReturnToDashboard ? "Back to distribution dashboard" : "Back to previous launch step"}
                       onClick={() => {
+                        if (canReturnToDashboard && launchStep === "details") {
+                          returnToDashboard();
+                          return;
+                        }
                         if (launchStep === "recipients") setLaunchStep("details");
                         else if (launchStep === "review") setLaunchStep("recipients");
                         else setLaunchStep("review");
                       }}
                     >
                       <ArrowLeft size={13} aria-hidden="true" />
-                      <span>Back</span>
+                      <span>{canReturnToDashboard && launchStep === "details" ? "Dashboard" : "Back"}</span>
                     </button>
                   ) : null}
                   <div className="admin-launch-progress">
@@ -1330,8 +1506,14 @@ export default function AdminBuilder() {
                   </div>
                 </div>
                 <h2 id="admin-envelope-title">{launchDialogTitle}</h2>
+                {campaignKind === "claim" ? <FlowStepper steps={adminFlowSteps} label="Distribution progress" /> : null}
               </div>
-              <button className="admin-envelope-close" type="button" aria-label="Close launch setup" onClick={() => setLaunchOpen(false)}>
+              <button
+                className="admin-envelope-close"
+                type="button"
+                aria-label={canReturnToDashboard ? "Back to distribution dashboard" : "Close launch setup"}
+                onClick={() => (canReturnToDashboard ? returnToDashboard() : setLaunchOpen(false))}
+              >
                 <X size={18} aria-hidden="true" />
               </button>
             </div>
@@ -1370,7 +1552,7 @@ export default function AdminBuilder() {
                           </div>
                         </details>
                       </div>
-                      <Field label="Drop name">
+                      <Field label="Distribution name">
                         <input className="input" placeholder="Private investor distribution" value={campaignName} onChange={(event) => setCampaignName(event.target.value)} />
                       </Field>
                       <div className="admin-field token-contract-field field-wide">
@@ -1391,6 +1573,14 @@ export default function AdminBuilder() {
                           <Field label="Claims close">
                             <input className="input" type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
                           </Field>
+                          <label className="admin-checkbox field-wide">
+                            <input
+                              type="checkbox"
+                              checked={allowExtensions}
+                              onChange={(event) => setAllowExtensions(event.target.checked)}
+                            />
+                            <span>Allow extending the claim window after launch</span>
+                          </label>
                         </>
                       ) : null}
                       {campaignKind === "vesting" ? null : (
@@ -1656,28 +1846,37 @@ export default function AdminBuilder() {
                         </div>
                       ) : null}
                       {showClaimCreateChoice ? (
-                        <button className="button-primary" type="button" disabled={selectedClaimCreateDisabled} onClick={() => deployCampaign(claimCreateMode)}>
+                        <button
+                          className="button-primary"
+                          type="button"
+                          disabled={selectedClaimCreateDisabled}
+                          onClick={() => setPendingConfirm("deploy")}
+                        >
                           {claimCreateMode === "fund" ? <ShieldCheck size={16} aria-hidden="true" /> : <Rocket size={16} aria-hidden="true" />}
                           {selectedClaimCreateLabel}
                         </button>
                       ) : null}
                       {showClaimFundAction ? (
-                        <button className="button-primary" type="button" disabled={busy || !canFundClaimPot} onClick={fundCampaignPot}>
+                        <button
+                          className="button-primary"
+                          type="button"
+                          disabled={busy || !canFundClaimPot}
+                          onClick={() => setPendingConfirm("fund")}
+                        >
                           <Wallet size={16} aria-hidden="true" />
-                          Fund drop
+                          Fund distribution
                         </button>
                       ) : null}
                       {showClaimSignAction ? (
-                        <button className="button-primary" type="button" disabled={busy || !canSignClaims} onClick={issueClaims}>
+                        <button
+                          className="button-primary"
+                          type="button"
+                          disabled={busy || !canSignClaims}
+                          onClick={() => setPendingConfirm("sign")}
+                        >
                           <KeyRound size={16} aria-hidden="true" />
                           Sign authorizations
                         </button>
-                      ) : null}
-                      {showClaimPortalAction ? (
-                        <a className="button-primary" href={claimPortalHref}>
-                          <Send size={16} aria-hidden="true" />
-                          Open Claim Portal
-                        </a>
                       ) : null}
                       <button className="button-secondary" type="button" disabled={busy} onClick={saveDraft}>
                         <Save size={16} aria-hidden="true" />
@@ -1960,6 +2159,46 @@ export default function AdminBuilder() {
           </section>
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={pendingConfirm === "deploy"}
+        title={claimCreateMode === "fund" ? "Create and fund distribution?" : "Deploy distribution?"}
+        body={
+          <p>
+            This submits a Sepolia transaction to {claimCreateMode === "fund" ? "create and fund" : "create"} the confidential
+            airdrop clone for <strong>{campaignName.trim() || "this distribution"}</strong>.
+          </p>
+        }
+        confirmLabel={selectedClaimCreateLabel}
+        busy={busy}
+        onCancel={() => setPendingConfirm(null)}
+        onConfirm={() => void deployCampaign(claimCreateMode)}
+      />
+      <ConfirmDialog
+        open={pendingConfirm === "fund"}
+        title="Fund distribution?"
+        body={<p>This encrypts the total allocation and funds the live distribution contract.</p>}
+        confirmLabel="Fund distribution"
+        busy={busy}
+        onCancel={() => setPendingConfirm(null)}
+        onConfirm={() => void fundCampaignPot()}
+      />
+      <ConfirmDialog
+        open={pendingConfirm === "sign"}
+        title="Launch distribution?"
+        body={
+          <p>
+            This signs claim authorizations for {parsed.rows.length.toLocaleString()} recipients. After launch, recipients can
+            reveal and claim.
+          </p>
+        }
+        confirmLabel="Sign authorizations"
+        busy={busy}
+        onCancel={() => setPendingConfirm(null)}
+        onConfirm={() => void issueClaims()}
+      />
+        </>
+      )}
     </section>
   );
 }

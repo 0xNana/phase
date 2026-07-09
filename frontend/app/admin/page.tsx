@@ -6,11 +6,10 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
   const campaigns = await listCampaigns();
-  const [campaign] = campaigns;
 
   return (
-    <AppChrome campaignId={campaign?.id}>
-      <AdminBuilder />
+    <AppChrome campaignId={campaigns[0]?.id}>
+      <AdminBuilder campaigns={campaigns} />
     </AppChrome>
   );
 }

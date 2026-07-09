@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock, Coins, Copy } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Clock, Coins, Copy } from "lucide-react";
 import type { Address, Hex, PublicClient } from "viem";
 import { useAccount, useChainId, usePublicClient, useSwitchChain, useWalletClient } from "wagmi";
 import { cusdcFaucetAddress, cusdcTokenAddress, sepoliaChainId } from "@/lib/env";
 import { formatTokenUnits, maskAddress } from "@/lib/format";
+import CopyButton from "./CopyButton";
 import WalletButton from "./WalletButton";
 
 const cusdcFaucetAbi = [
@@ -237,9 +239,24 @@ export default function FaucetClaim() {
             </div>
 
             {latestHash ? (
-              <a className="faucet-tx-link" href={`https://sepolia.etherscan.io/tx/${latestHash}`} target="_blank" rel="noreferrer">
-                Transaction <span className="mono">{maskAddress(latestHash)}</span>
-              </a>
+              <div className="faucet-success panel">
+                <div className="faucet-success-header">
+                  <CheckCircle2 size={20} aria-hidden="true" />
+                  <div>
+                    <strong>cUSDC received.</strong>
+                    <p>Next: launch a confidential distribution with your demo balance.</p>
+                  </div>
+                </div>
+                <div className="faucet-success-actions">
+                  <Link className="button-primary" href="/admin">
+                    Launch Distribution <ArrowRight size={16} aria-hidden="true" />
+                  </Link>
+                  <CopyButton value={latestHash} label="Copy tx hash" className="button-ghost" />
+                  <a className="faucet-tx-link" href={`https://sepolia.etherscan.io/tx/${latestHash}`} target="_blank" rel="noreferrer">
+                    Transaction <span className="mono">{maskAddress(latestHash)}</span>
+                  </a>
+                </div>
+              </div>
             ) : null}
           </div>
         </section>

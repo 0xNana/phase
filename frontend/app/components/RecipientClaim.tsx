@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createConfidentialAirdropClient, type PreflightResult } from "@tokenops/sdk/fhe-airdrop";
@@ -15,8 +16,11 @@ import { useUserDecrypt, type DecryptResult } from "@zama-fhe/react-sdk";
 import { AlertCircle, CheckCircle2, Eye, Info, Loader2, LockKeyhole, RefreshCcw, Send, WalletCards } from "lucide-react";
 import { type Address, type Hex } from "viem";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
+import { claimWindowLabel, formatUnixRange } from "@/lib/distribution-status";
 import { formatTokenUnits, maskAddress } from "@/lib/format";
 import type { Campaign, ClaimPayload } from "@/lib/types";
+import FlowStepper from "./FlowStepper";
+import StatusBadge from "./StatusBadge";
 
 type ClaimLoadStatus = "disconnected" | "loading" | "ready" | "missing" | "error";
 type ClaimPreflightState = {
@@ -63,20 +67,39 @@ export default function RecipientClaim({ campaign }: { campaign: Campaign }) {
     setLoadMessage("Claim loaded.");
   }, [address, campaign.airdropAddress, campaign.id]);
 
+  const inviteReady = Boolean(campaign.airdropAddress && claimPayload && address);
+
   return (
     <section className="recipient-claim-page" aria-labelledby="claim-title">
       <div className="recipient-claim-shell panel">
-        <div className="recipient-claim-header">
+        <div className="recipient-claim-header recipient-invite-header">
           <span className="product-kicker">
             <LockKeyhole size={16} aria-hidden="true" />
-            Claim
+            Invitation
           </span>
-          <h1 id="claim-title">{campaign.name}</h1>
-          <p>Check wallet. Reveal allocation. Claim.</p>
+          <div className="recipient-invite-top">
+            <h1 id="claim-title">{campaign.name}</h1>
+            <StatusBadge campaign={campaign} />
+          </div>
+          <p className="recipient-invite-meta">
+            {campaign.creator ? `Created by ${maskAddress(campaign.creator)}` : "Confidential distribution"}
+            {" · "}
+            Claim window {claimWindowLabel(campaign)} ({formatUnixRange(campaign.startTimestamp, campaign.endTimestamp)})
+          </p>
+          {!inviteReady ? (
+            <FlowStepper
+              label="Recipient progress"
+              steps={[
+                { id: "connect", label: "Connect", state: address ? "done" : "active" },
+                { id: "reveal", label: "Reveal", state: "idle" },
+                { id: "claim", label: "Claim", state: "idle" },
+              ]}
+            />
+          ) : null}
         </div>
 
-        {campaign.airdropAddress && claimPayload && address ? (
-          <ClaimFlow campaign={campaign} claimPayload={claimPayload} user={address} />
+        {inviteReady ? (
+          <ClaimFlow campaign={campaign} claimPayload={claimPayload!} user={address!} />
         ) : (
           <ClaimGate loadStatus={loadStatus} loadMessage={loadMessage} />
         )}
@@ -284,6 +307,14 @@ function ClaimFlow({ campaign, claimPayload, user }: { campaign: Campaign; claim
 
   return (
     <div className="recipient-claim-body">
+      <FlowStepper
+        label="Recipient progress"
+        steps={[
+          { id: "connect", label: "Connect", state: "done" },
+          { id: "reveal", label: "Reveal", state: revealDone ? "done" : "active" },
+          { id: "claim", label: "Claim", state: done ? "done" : revealDone ? "active" : "idle" },
+        ]}
+      />
       <div className={`recipient-claim-stage is-${stage}`} aria-live="polite">
         {stageCopy.icon ? <span className="recipient-claim-icon">{stageCopy.icon}</span> : null}
         <div>
@@ -360,10 +391,19 @@ function ClaimGate({
           {state.kicker ? <span className="pill pill-watch">{state.kicker}</span> : null}
           <h2>{state.title}</h2>
           <p>{loadMessage}</p>
+          {loadStatus === "missing" ? (
+            <p className="recipient-invite-hint">Ready to reveal once eligibility is confirmed on the recipient workspace.</p>
+          ) : null}
         </div>
-        <button className="button-secondary recipient-claim-button" type="button" disabled>
-          {state.button}
-        </button>
+        {loadStatus === "missing" ? (
+          <Link className="button-primary recipient-claim-button" href="/recipient">
+            Check eligibility
+          </Link>
+        ) : (
+          <button className="button-secondary recipient-claim-button" type="button" disabled>
+            {state.button}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -403,16 +443,16 @@ function getStageCopy(stage: "done" | "ready" | "checking" | "blocked"): { icon:
     return {
       icon: <CheckCircle2 size={34} aria-hidden="true" />,
       kicker: "",
-      title: "Claim complete",
-      copy: "Your claim is recorded.",
+      title: "Tokens claimed",
+      copy: "Your confidential claim is recorded. Observers can verify activity without seeing your amount.",
     };
   }
   if (stage === "ready") {
     return {
       icon: <Send size={34} aria-hidden="true" />,
-      kicker: "",
-      title: "Ready to claim",
-      copy: "Confirm once in wallet.",
+      kicker: "Ready to claim",
+      title: "Claim tokens",
+      copy: "Confirm once in your wallet to receive confidential cUSDC.",
     };
   }
   if (stage === "checking") {
@@ -424,10 +464,10 @@ function getStageCopy(stage: "done" | "ready" | "checking" | "blocked"): { icon:
     };
   }
   return {
-    icon: null,
-    kicker: "",
-    title: "",
-    copy: "",
+    icon: <Eye size={34} aria-hidden="true" />,
+    kicker: "Ready to reveal",
+    title: "Reveal allocation",
+    copy: "Decrypt only your sealed amount, then claim tokens.",
     info: "Reveal and decrypt your allocation before claiming.",
   };
 }

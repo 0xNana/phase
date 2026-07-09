@@ -80,6 +80,13 @@ export interface SaveVestingScheduleInput {
   txHash?: Hex;
 }
 
+export interface DistributionRecipientRow {
+  recipient: Address;
+  maskedAddress: string;
+  revealStatus: "not_revealed" | "revealed";
+  claimStatus: "not_claimed" | "claimed";
+}
+
 export interface PhaseDb {
   campaigns: Campaign[];
   claims: ClaimPayload[];
